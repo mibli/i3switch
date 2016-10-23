@@ -24,12 +24,12 @@ def find_and_load(path=None):
 def get_defaults():
     return {
         "bindings": {
-            "left":     ["Mod4", "h"],
-            "right":    ["Mod4", "l"],
-            "top":      ["Mod4", "k"],
-            "bottom":   ["Mod4", "j"],
-            "tab-next": ["Mod4", "Tab"],
-            "tab-prev": ["Mod4", "Shift", "Tab"]
+            "left":     ["Super", "h"],
+            "right":    ["Super", "l"],
+            "top":      ["Super", "k"],
+            "bottom":   ["Super", "j"],
+            "tab-next": ["Super", "Tab"],
+            "tab-prev": ["Super", "Shift", "Tab"]
         }
     }
 
