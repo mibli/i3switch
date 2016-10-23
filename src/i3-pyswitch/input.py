@@ -2,11 +2,12 @@
 Module handles input from udev
 """
 
+import threading
+
 from Xlib.display import Display
 from Xlib import X
+
 from utils import running
-import oss
-import threading
 
 class Keyboard(threading.Thread):
     def __init__(self, defs=[]):
@@ -15,7 +16,7 @@ class Keyboard(threading.Thread):
         self.root = self.display.screen().root
         self.defs = []
 
-        self.root.change_attributes(event_mask = X.KeyPressMask)
+        self.root.change_attributes(event_mask=X.KeyPressMask)
 
         for keycode, callback in defs:
             self.add_key(keycode, callback)
@@ -41,8 +42,12 @@ class Keyboard(threading.Thread):
         self.root.grab_key(keycode, X.AnyModifier, 1, X.GrabModeAsync, X.GrabModeAsync)
         return True
 
-    def run():
-        while running():
-            xevent = root.display.next_event()
-            handle_xevent(xevent)
+    def add_keysym(self, keysym, callback):
+        """ does same as add_key, but uses names like Control_L instead of keycodes """
+        keycode = self.display.keysym_to_keycode(keysym)
+        self.add_key(keycode, callback)
 
+    def run(self):
+        while running():
+            xevent = self.root.display.next_event()
+            self.handle_event(xevent)
