@@ -1,39 +1,56 @@
+"""
+Configuration management
+"""
 import json
 import os.path
+import logging
+from .utils import deep_update
+
+DEFAULTS = {
+    "bindings": {
+        "win + h":              "left",
+        "win + l":              "right",
+        "win + k":              "top",
+        "win + j":              "bottom",
+        "win + tab":            "tab-next",
+        "win + shift + tab":    "tab-prev"
+    }
+}
 
 def find_and_load(path=None):
+    """
+    Check a few paths for config, and load if you find one
+
+    by default retuns empty dictionary
+    >>> find_and_load()
+    {}
+    """
     home = os.getenv("HOME")
+
     # searched in reverse order
-    search_locations = (
+    search_locations = [
         "/etc/i3-pyswitch/config.json",
         os.path.join(home, ".config/i3-pswitch/config.json")
-    )
+    ]
+
     if path is not None:
         search_locations.append(path)
+
     for location in reversed(search_locations):
         try:
             with open(location, "r") as config_file:
                 # TODO schema checking
                 config_data = json.load(config_file)
             return config_data
-        except:
-            logging.info("couldnt find config file under path\n%s", location)
+        except Exception as e:
+            logging.info("couldnt find config file under path\n%s\n%s", location, e)
+
     logging.error("couldnt find config file")
     return {}
 
-def get_defaults():
-    return {
-        "bindings": {
-            "left":     ["Super", "h"],
-            "right":    ["Super", "l"],
-            "top":      ["Super", "k"],
-            "bottom":   ["Super", "j"],
-            "tab-next": ["Super", "Tab"],
-            "tab-prev": ["Super", "Shift", "Tab"]
-        }
-    }
-
 def get_config(path=None):
-    defaults = get_defaults()
+    """
+    Get config, applying default values
+    """
     user_config = find_and_load(path)
-    return deep_update(defaults, user_config)
+    return deep_update(DEFAULTS, user_config)
