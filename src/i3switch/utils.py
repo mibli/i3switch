@@ -113,7 +113,7 @@ class Runtime:
         for sig in sigs:
             signal.signal(sig, self.stop)
 
-    def stop(self):
+    def stop(self, *_):
         """ set as not running """
         self.run_event.clear()
 
