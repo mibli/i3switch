@@ -2,52 +2,34 @@
 Module handles input from udev
 """
 
-import threading
+import logging
+import keyboard
 
-from Xlib.display import Display
-from Xlib import X
+HANDLERS = []
 
-from utils import running
+def bad_bind(action):
+    """ if the function wasnt found, lets let them know """
+    logging.warning("Bind: action doesnt exist: %s", action)
 
-class Keyboard(threading.Thread):
-    def __init__(self, defs=[]):
-        threading.Thread.__init__()
-        self.display = Display()
-        self.root = self.display.screen().root
-        self.defs = []
+def good_bind(action, function, args):
+    """ if the function was found, lets let them know """
+    logging.info("Bind: executing action: %s", action)
+    function(*args)
 
-        self.root.change_attributes(event_mask=X.KeyPressMask)
+def bind(control, combo, action, args):
+    """ bind a combination to a function (taken by action name), and arguments """
+    function = getattr(control, action, None)
+    if not callable(function):
+        function = lambda: bad_bind(action)
+    else:
+        function = lambda: good_bind(action, function, args)
+    logging.info("Bind: bound %s to %s", combo, action)
+    handler = keyboard.add_hotkey(combo, function)
+    HANDLERS.append(handler)
 
-        for keycode, callback in defs:
-            self.add_key(keycode, callback)
-
-    def get_callback(self, key):
-        for keycode, callback in self.defs:
-            if keycode == key:
-                return callback
-        else:
-            return None
-
-    def handle_event(self, xevent):
-        if xevent.type != X.KeyPress:
-            return
-        callback = get_callback(xevent.detail)
-        if callback is not None:
-            callback()
-
-    def add_key(self, keycode, callback):
-        if get_def(keycode) is not None:
-            return False
-        self.defs.append((keycode, callback))
-        self.root.grab_key(keycode, X.AnyModifier, 1, X.GrabModeAsync, X.GrabModeAsync)
-        return True
-
-    def add_keysym(self, keysym, callback):
-        """ does same as add_key, but uses names like Control_L instead of keycodes """
-        keycode = self.display.keysym_to_keycode(keysym)
-        self.add_key(keycode, callback)
-
-    def run(self):
-        while running():
-            xevent = self.root.display.next_event()
-            self.handle_event(xevent)
+def bind_all(control, config):
+    """ bind all combinations from configuration """
+    for combo, action in config.items():
+        chunks = action.split(" ")
+        (action, *args) = chunks
+        bind(control, combo, action, args)
