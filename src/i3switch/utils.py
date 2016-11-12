@@ -99,31 +99,42 @@ def deep_get(dictionary, keys, default=None):
     return value
 
 
-def running(sigs=None):
+class Runtime:
+    """
+    class for management of application runtime state, handles exit signals automatically
+    """
+    def __init__(self, sigs=None):
+        import signal
+        from threading import Event
+
+        self.run_event = Event()
+        self.run_event.set()
+        sigs = sigs or (signal.SIGPIPE, signal.SIGINT, signal.SIGTERM, signal.SIGABRT)
+        for sig in sigs:
+            signal.signal(sig, self.stop)
+
+    def stop(self):
+        """ set as not running """
+        self.run_event.clear()
+
+    def running(self):
+        """ return running status """
+        return self.run_event.is_set()
+
+GLOBAL_RUNTIME = Runtime()
+
+def running():
     """
     Function returns running status. Which is definied by automatically created signal handler
 
     >>> running()
     True
-    >>> running.run = False
+    >>> GLOBAL_RUNTIME.stop()
     >>> running()
     False
     """
-    if not hasattr(running, "run"):
-        import signal
-
-        # running handler
-        running.run = True
-        def stop(*_):
-            running.run = False
-
-        # signals registration
-        sigs = sigs or (signal.SIGPIPE, signal.SIGINT, signal.SIGTERM, signal.SIGABRT)
-        for sig in sigs:
-            signal.signal(sig, stop)
-
     # return status
-    return running.run
+    return GLOBAL_RUNTIME.running()
 
 if __name__ == "__main__":
     import doctest
