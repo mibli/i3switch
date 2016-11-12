@@ -8,12 +8,12 @@ from .utils import deep_update
 
 DEFAULTS = {
     "bindings": {
-        "Win+h":              "switch left",
-        "Win+l":              "switch right",
-        "Win+k":              "switch top",
-        "Win+j":              "switch bottom",
-        "Win+Tab":            "switch_tab next",
-        "Win+Shift+Tab":      "switch_tab prev"
+        "Windows+h":              "switch left",
+        "Windows+l":              "switch right",
+        "Windows+k":              "switch top",
+        "Windows+j":              "switch bottom",
+        "Windows+Tab":            "switch_tab next",
+        "Windows+Shift+Tab":      "switch_tab prev"
     }
 }
 
