@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser
-from controller import Controller
+from . import controller
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Tabs-concious switching')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-d', '--direction', type=str,
-                       choices=controller.directions,
+                       choices=controller.DIRECTIONS,
                        help='Switch to [direction] of focused window (ignores tabs)')
     parser.add_argument('-t', '--tab', action='store_true',
                         help='For use with -d, to switch tabs')
@@ -31,12 +31,12 @@ if __name__ == "__main__":
     if args.number is not None and args.number <= 0:
         print_help_and_die("Tab indexes start from 1")
 
-    i3 = Controller()
+    i3 = controller.Controller()
 
     if args.number:
         i3.switch_to_tab(args.number)
     elif args.direction is not None:
-        if args.tabs:
+        if args.tab:
             i3.switch_tabs(args.direction)
         else:
             i3.switch(args.direction, args.parent)
