@@ -12,8 +12,8 @@ DEFAULTS = {
         "Windows+l":              "switch right",
         "Windows+k":              "switch top",
         "Windows+j":              "switch bottom",
-        "Windows+Tab":            "switch_tab next",
-        "Windows+Shift+Tab":      "switch_tab prev"
+        "Windows+Tab":            "switch_tab right",
+        "Windows+Shift+Tab":      "switch_tab left"
     }
 }
 
