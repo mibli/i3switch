@@ -4,9 +4,22 @@ from argparse import ArgumentParser
 from . import controller
 
 
+def main(control):
+    from .config import get_config
+    from .input import bind_all
+    from .utils import running
+    from time import sleep
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    config = get_config()
+    bind_all(control, config['bindings'])
+    while running():
+        sleep(1)
+
+
 if __name__ == "__main__":
     parser = ArgumentParser(description='Tabs-concious switching')
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument('-d', '--direction', type=str,
                        choices=controller.DIRECTIONS,
                        help='Switch to [direction] of focused window (ignores tabs)')
@@ -40,3 +53,5 @@ if __name__ == "__main__":
             i3.switch_tabs(args.direction)
         else:
             i3.switch(args.direction, args.parent)
+    else:
+        main(i3)
