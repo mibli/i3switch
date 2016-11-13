@@ -6,4 +6,4 @@ It adds ability to switch in relation to tabs.
 
 ### Depends
 
-keyboard >9.1
+keyboard >9.3
