@@ -2,107 +2,80 @@
 Control focus movement commands
 """
 
-import i3ipc
 import logging
 import sys
+from . import i3
 
 DIRECTIONS = ['left', 'up', 'right', 'down', 'parent']
-TAB_DIRECTIONS = ['left', 'right']
+TAB_DIRECTIONS = ['prev', 'next']
 
 class Controller:
+    """ Our commands to control focus and windows, uses i3.I3 as i3 API """
     def __init__(self):
-        self.i3 = i3ipc.Connection()
-        self.wrap_tabs = True
+        self.i3 = i3.I3()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.addHandler(logging.StreamHandler(sys.stdout))
         self.logger.setLevel(logging.INFO)
 
-    # PRIVATE
+    def switch(self, direction, group_tabs='nogroup'):
+        """
+        Switch in direction
 
-    def get_root_context(self):
-        return self.i3.get_tree()
-
-    def get_focused_context(self):
-        return self.get_root_context().find_focused()
-
-    def get_tabbed_context(self, current_context=None):
-        context = current_context or self.get_focused_context()
-        try:
-            while context.layout != 'tabbed':
-                context = context.parent
-        except Exception:
-            logging.warning("Not in tabbed context")
-            return None
-        else:
-            return context
-
-    def get_next_context(self, parent_context):
-        if parent_context is None:
-            return None
-        last = None
-        for child in parent_context.descendents():
-            if(last is not None and
-               (last.focused or last.find_focused() is not None)):
-                return child
-            last = child
-        if self.wrap_tabs:
-            return parent_context.descendents()[0]
-        return None
-
-    def get_prev_context(self, parent_context):
-        if parent_context is None:
-            return None
-        last = None
-        for child in parent_context.descendents():
-            if(last is not None and
-               (child.focused or child.find_focused() is not None)):
-                return last
-            last = child
-        if self.wrap_tabs:
-            return parent_context.descendents()[-1]
-        return None
-
-    def send(self, command, *argv):
-        formatted = command.format(*argv)
-        self.logger.info(formatted)
-        self.i3.command(formatted)
-
-    # PUBLIC
-
-    def switch(self, direction, parent=False):
-        """ Switch in direction """
-        context = self.get_focused_context()
+        correct usage:
+        >>> switch('up')
+        >>> switch('right', 'group')
+        """
         if direction not in DIRECTIONS:
             logging.error("%s is not one of %s", direction, str(DIRECTIONS))
             return
-        if parent:
-            tab_context = self.get_tabbed_context(context)
-            if tab_context is not None:
-                self.send('[con_id={}] focus', tab_context.id)
-        self.send('focus {}', direction)
-
-    def switch_tab(self, direction):
-        if direction not in DIRECTIONS:
-            logging.error("%s is not one of %s", direction, str(DIRECTIONS))
+        if group_tabs not in ['group', 'nogroup']:
+            logging.error("%s is not one of ['group', 'nogroup']", group_tabs)
             return
+
+        focused = self.i3.focused()
+        if group_tabs == 'group':
+            tabs = self.i3.container(focused)
+            if tabs is not None:
+                self.i3.send('[con_id={}] focus', tabs.id)
+        self.i3.send('focus {}', direction)
+
+    def switch_tab(self, direction, wrap_tabs='nowrap'):
+        """
+        Switch tab to next, prev
+
+        correct usage:
+        >>> switch_tab('next')
+        >>> switch_tab('prev', 'wrap')
+        """
         if direction not in TAB_DIRECTIONS:
-            self.switch(direction)
-        context = self.get_tabbed_context()
-        tab = self.get_prev_context(context) if direction == 'left' else self.get_next_context(context)
+            logging.error("%s is not one of %s", direction, str(TAB_DIRECTIONS))
+            return
+        if wrap_tabs not in ['wrap', 'nowrap']:
+            logging.error("%s is not one of ['wrap', 'nowrap']", wrap_tabs)
+            return
+
+        if direction == 'prev':
+            tab = self.i3.prev_tab(wrap_tabs=(wrap_tabs == 'wrap'))
+        else:
+            tab = self.i3.next_tab(wrap_tabs=(wrap_tabs == 'wrap'))
         if tab is None:
             return
-        self.send('[con_id={}] focus', tab.id)
+        self.i3.send('[con_id={}] focus', tab.id)
 
     def switch_to_tab(self, number):
-        context = self.get_tabbed_context()
+        """
+        Switch to nth tab
+
+        correct usage:
+        >>> switch_to_tab(1)
+        >>> switch_to_tab(10)
+        """
+        tabs = self.i3.tabbed()
         try:
-            tab = context.descendents()[number - 1]
+            tab = tabs.nodes[number - 1]
         except Exception:
-            self.logger.warning("There is no tab {}", number)
+            self.logger.warning("There is no tab %d", number)
             return False
         else:
-            self.send('[con_id={}] focus', tab.id)
+            self.i3.send('[con_id={}] focus', tab.id)
             return True
-
-
-
