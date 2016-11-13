@@ -3,7 +3,7 @@ Module handles input from udev
 """
 
 import logging
-from . import keyboard
+import keyboard
 
 HANDLERS = []
 

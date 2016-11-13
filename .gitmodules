@@ -1,3 +1,0 @@
-[submodule "3rd-party/keyboard"]
-	path = 3rd-party/keyboard
-	url = https://github.com/boppreh/keyboard.git
