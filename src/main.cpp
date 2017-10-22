@@ -56,44 +56,48 @@ int main(int argc, char const **argv)
     });
 
     // Get socket directory name
-    std::string i3_socket = command("i3 --get-socketpath");
-    std::cout << i3_socket;
-    std::string zmq_socket_path = "ipc://" + i3_socket;
+    std::string i3_socket = "ipc://" + command("i3 --get-socketpath");
 
     // Create socket connection
     zmq::context_t context {1};
     zmq::socket_t socket {context, ZMQ_REQ};
-    //socket.bind(zmq_socket_path);
-    socket.connect(zmq_socket_path);
-    std::cout << "Connected: " << zmq_socket_path << std::endl;
+    //socket.bind(i3_socket);
+    socket.connect(i3_socket);
+    std::cout << "Connected: " << i3_socket << std::endl;
 
     // Create and send a message
     {
         std::string request = "Hello\n";
         zmq::message_t msg {request.size()};
         memcpy(msg.data(), request.data(), request.size());
-        socket.send(msg, ZMQ_NOBLOCK);
+        socket.send(msg);
         std::cout << "Sent: " << request << std::endl;
     }
 
     // Create and receive a message
-    while (42)
     {
-        zmq::pollitem_t items[] = { { socket, 0, ZMQ_POLLIN, 0 } };
-        zmq::poll(&items[0], 1, 30);
-
-        std::cout << "Sleeping... " << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        if (items[0].revents & ZMQ_POLLIN)
-        {
-            zmq::message_t msg;
-            socket.recv(&msg);
-            std::string reply(reinterpret_cast<char *>(msg.data()), msg.size());
-            std::cout << "Received: " << reply << std::endl;
-            break;
-        }
+        zmq::message_t msg;
+        socket.recv(&msg);
+        std::string reply(reinterpret_cast<char *>(msg.data()), msg.size());
+        std::cout << "Received: " << reply << std::endl;
     }
+//    while (42)
+//    {
+//        zmq::pollitem_t items[] = { { socket, 0, ZMQ_POLLIN, 0 } };
+//        zmq::poll(&items[0], 1, 30);
+//
+//        std::cout << "Sleeping... " << std::endl;
+//        std::this_thread::sleep_for(std::chrono::seconds(1));
+//
+//        if (items[0].revents & ZMQ_POLLIN)
+//        {
+//            zmq::message_t msg;
+//            socket.recv(&msg);
+//            std::string reply(reinterpret_cast<char *>(msg.data()), msg.size());
+//            std::cout << "Received: " << reply << std::endl;
+//            break;
+//        }
+//    }
 
     parser.parse(argc, argv);
     auto number = parser["number"].to<int>();
