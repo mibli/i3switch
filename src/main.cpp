@@ -1,5 +1,6 @@
 //#include <nlohmann/json.hpp>
 #include "getoptext.hpp"
+#include "logging.hpp"
 
 #include <string>
 #include <iostream>
@@ -55,15 +56,17 @@ int main(int argc, char const **argv)
         {"n", "number", ""}
     });
 
+    logging::Logger log;
+    log.configure("%s:%s()  ", __FILENAME__, __func__);
+
     // Get socket directory name
     std::string i3_socket = "ipc://" + command("i3 --get-socketpath");
 
     // Create socket connection
     zmq::context_t context {1};
     zmq::socket_t socket {context, ZMQ_REQ};
-    //socket.bind(i3_socket);
     socket.connect(i3_socket);
-    std::cout << "Connected: " << i3_socket << std::endl;
+    log.info("Connected %s", i3_socket.c_str());
 
     // Create and send a message
     {
@@ -71,15 +74,16 @@ int main(int argc, char const **argv)
         zmq::message_t msg {request.size()};
         memcpy(msg.data(), request.data(), request.size());
         socket.send(msg);
-        std::cout << "Sent: " << request << std::endl;
+        log.info("Sent: %s", request.c_str());
     }
 
+    socket.bind(i3_socket);
     // Create and receive a message
     {
         zmq::message_t msg;
         socket.recv(&msg);
         std::string reply(reinterpret_cast<char *>(msg.data()), msg.size());
-        std::cout << "Received: " << reply << std::endl;
+        log.info("Received: %s", reply.c_str());
     }
 //    while (42)
 //    {
