@@ -14,11 +14,12 @@ include_directories(3rd-party/json11/)
 
 find_package(PkgConfig)
 pkg_check_modules(ZEROMQ libzmq REQUIRED)
+find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} src/*.cpp)
 include_directories(${ZEROMQ_INCLUDE_DIRS})
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-target_link_libraries(${CMAKE_PROJECT_NAME} ${ZEROMQ_LIBRARIES})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${ZEROMQ_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION /usr/bin/)

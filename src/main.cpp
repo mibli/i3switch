@@ -1,12 +1,13 @@
 //#include <nlohmann/json.hpp>
 #include "getoptext.hpp"
 #include "logging.hpp"
+#include "socket.hpp"
 
 #include <string>
 #include <iostream>
 #include <sstream>
-#include <zmq.hpp>
 #include <cstdio>
+#include <thread>
 
 #include <thread>
 #include <chrono>
@@ -47,6 +48,16 @@ void print_help_and_die(getoptext::Parser &p, char const *msg)
     exit(1);
 }
 
+int receiver(Socket &socket)
+{
+    std::cout << "Receiver started" << std::endl;
+    while (42)
+    {
+        auto result = socket.read(1);
+        std::cout << "Received " << result << std::endl;
+    }
+}
+
 int main(int argc, char const **argv)
 {
     getoptext::Parser parser({
@@ -60,31 +71,31 @@ int main(int argc, char const **argv)
     log.configure("%s:%s()  ", __FILENAME__, __func__);
 
     // Get socket directory name
-    std::string i3_socket = "ipc://" + command("i3 --get-socketpath");
+    std::string i3_socket_path = command("i3 --get-socketpath");
 
     // Create socket connection
-    zmq::context_t context {1};
-    zmq::socket_t socket {context, ZMQ_REQ};
-    socket.connect(i3_socket);
-    log.info("Connected %s", i3_socket.c_str());
+    Socket socket {i3_socket_path};
+    log.info("Connected %s", i3_socket_path.c_str());
 
+    std::thread receiver_thread {[&socket](){ receiver(socket); }};
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     // Create and send a message
     {
-        std::string request = "Hello\n";
-        zmq::message_t msg {request.size()};
-        memcpy(msg.data(), request.data(), request.size());
-        socket.send(msg);
+        // this is a hassle, let's let i3ipc do it
+        struct {
+            uint8_t magic [6];
+            uint32_t size;
+            uint32_t type;
+        } __attribute__((packed)) msg;
+        std::string request = "";
+        socket.write(request);
         log.info("Sent: %s", request.c_str());
     }
 
-    socket.bind(i3_socket);
     // Create and receive a message
-    {
-        zmq::message_t msg;
-        socket.recv(&msg);
-        std::string reply(reinterpret_cast<char *>(msg.data()), msg.size());
-        log.info("Received: %s", reply.c_str());
-    }
+    receiver_thread.join();
+    exit(1);
 //    while (42)
 //    {
 //        zmq::pollitem_t items[] = { { socket, 0, ZMQ_POLLIN, 0 } };
