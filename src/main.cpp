@@ -8,10 +8,13 @@
 #include <sstream>
 #include <cstdio>
 #include <thread>
+#include <vector>
+#include <algorithm>
 
 #include <thread>
 #include <chrono>
 
+#include <i3/ipc.h>
 
 std::string command(std::string const &command, bool strip_last = true)
 {
@@ -53,9 +56,29 @@ int receiver(Socket &socket)
     std::cout << "Receiver started" << std::endl;
     while (42)
     {
-        auto result = socket.read(1);
-        std::cout << "Received " << result << std::endl;
+        auto result = socket.read(sizeof(i3_ipc_header));
+        auto const header = reinterpret_cast<i3_ipc_header_t *>(result.data());
+        auto payload = socket.read(header->size);
+        std::cout << "Received " << payload.size() << "B" << std::endl;
+        std::string json_string;
+        std::copy(payload.begin(), payload.end(), std::back_inserter(json_string));
+        std::cout << "Received string \n" << json_string << std::endl;
     }
+}
+
+std::vector<uint8_t> construct_i3ipc(uint32_t msg_type, std::string const &payload)
+{
+    // create header
+    i3_ipc_header_t header;
+    strncpy(header.magic, I3_IPC_MAGIC, 6);
+    header.type = msg_type;
+    header.size = payload.length();
+    // copy header and string to the vector
+    std::vector<uint8_t> bytes (sizeof(i3_ipc_header) + header.size);
+    auto const header_ptr = reinterpret_cast<uint8_t *>(&header);
+    std::copy(header_ptr, header_ptr + sizeof(i3_ipc_header), bytes.begin());
+    std::copy(payload.begin(), payload.end(), bytes.end());
+    return bytes;
 }
 
 int main(int argc, char const **argv)
@@ -83,14 +106,9 @@ int main(int argc, char const **argv)
     // Create and send a message
     {
         // this is a hassle, let's let i3ipc do it
-        struct {
-            uint8_t magic [6];
-            uint32_t size;
-            uint32_t type;
-        } __attribute__((packed)) msg;
-        std::string request = "";
-        socket.write(request);
-        log.info("Sent: %s", request.c_str());
+        auto msg = construct_i3ipc(I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, "");
+        socket.write(msg);
+        log.info("Sent %dB request", msg.size());
     }
 
     // Create and receive a message

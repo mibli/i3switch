@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class Socket
 {
@@ -16,8 +17,8 @@ public:
     Socket(std::string const &path);
     ~Socket() = default;
 
-    bool write(std::string const &msg);
-    std::string read(size_t size);
+    bool write(std::vector<uint8_t> const &msg);
+    std::vector<uint8_t> read(size_t size);
 };
 
 #endif//__socket_hpp__
