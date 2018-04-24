@@ -44,7 +44,7 @@ Socket::Socket(std::string const &path)
     }
 }
 
-bool Socket::write(std::string const &msg)
+bool Socket::write(std::vector<uint8_t> const &msg)
 {
     size_t written = 0;
     ssize_t n = 0;
@@ -64,7 +64,7 @@ bool Socket::write(std::string const &msg)
     return not (n == -1);
 }
 
-std::string Socket::read(size_t size)
+std::vector<uint8_t> Socket::read(size_t size)
 {
 	// malloc shouldnt be used so often but what the heck
     char *buffer = reinterpret_cast<char *>(malloc(size));
@@ -74,7 +74,7 @@ std::string Socket::read(size_t size)
     {
         log.info("starting to read %d", read_count);
         int n = ::read(fd, buffer + read_count, size - read_count);
-        log.info("read something", read_count);
+        log.info("read something (%d)", n);
 		switch (n)
 		{
 			case -1:
@@ -82,13 +82,14 @@ std::string Socket::read(size_t size)
 				exit(1);
 			case 0:
 				log.debug("Received EOF (closed connection), %d", size);
-				return "";
+				return {};
 			default:
 				read_count += n;
 		}
     }
 
-	std::string result {buffer, static_cast<size_t>(read_count)};
+	std::vector<uint8_t> result (read_count);
+    std::copy(buffer, buffer + static_cast<size_t>(read_count), result.begin());
 	free(buffer);
 
 	return result;
