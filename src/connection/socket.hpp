@@ -1,7 +1,7 @@
 #ifndef __socket_hpp__
 #define __socket_hpp__
 
-#include "logging.hpp"
+#include "../utils/logging.hpp"
 
 #include <cstdint>
 #include <string>

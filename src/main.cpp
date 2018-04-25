@@ -1,7 +1,7 @@
 //#include <nlohmann/json.hpp>
-#include "getoptext.hpp"
-#include "logging.hpp"
-#include "socket.hpp"
+#include "utils/getoptext.hpp"
+#include "utils/logging.hpp"
+#include "connection/socket.hpp"
 
 #include <string>
 #include <iostream>
