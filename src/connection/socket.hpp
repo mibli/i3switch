@@ -1,5 +1,4 @@
-#ifndef __socket_hpp__
-#define __socket_hpp__
+#pragma once
 
 #include "../utils/logging.hpp"
 
@@ -20,5 +19,3 @@ public:
     bool write(std::vector<uint8_t> const &msg);
     std::vector<uint8_t> read(size_t size);
 };
-
-#endif//__socket_hpp__

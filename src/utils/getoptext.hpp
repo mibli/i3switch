@@ -1,5 +1,4 @@
-#ifndef __getopt_extended__
-#define __getopt_extended__
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -107,5 +106,3 @@ public:
 };
 
 }//namespace getopt
-
-#endif//__getopt_extended__

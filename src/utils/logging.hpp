@@ -1,5 +1,4 @@
-#ifndef __log_hpp__
-#define __log_hpp__
+#pragma once
 
 #include <string>
 #include <array>
@@ -123,5 +122,3 @@ namespace logging {
         }
     };
 }
-
-#endif//__log_hpp__
