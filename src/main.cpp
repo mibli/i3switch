@@ -2,6 +2,7 @@
 #include "utils/getoptext.hpp"
 #include "utils/logging.hpp"
 #include "connection/i3client.hpp"
+#include <json11.hpp>
 
 #include <string>
 #include <iostream>
@@ -49,6 +50,22 @@ void print_help_and_die(getoptext::Parser &p, char const *msg)
     exit(1);
 }
 
+json11::Json find_focused(json11::Json const &obj)
+{
+    if (obj["focused"].bool_value() == true)
+    {
+        return obj;
+    }
+    auto &nodes = obj["nodes"].array_items();
+    for (auto &needle : nodes)
+    {
+        auto found = find_focused(needle);
+        if (not found.is_null())
+            return found;
+    }
+    return {};
+}
+
 int main(int argc, char const **argv)
 {
     getoptext::Parser parser({
@@ -67,9 +84,13 @@ int main(int argc, char const **argv)
     // Create socket connection
     i3::Client i3_client(i3_socket_path);
 
-    auto result = i3_client.request(i3::RequestType::GET_WORKSPACES, "");
+    auto result = i3_client.request(i3::RequestType::GET_TREE, "");
 
-    log.info("Received message:\n%s", result.c_str());
+    //log.info("Received message:\n%s", result.c_str());
+    std::string err;
+    auto tree = json11::Json::parse(result, err);
+    auto current = find_focused(tree);
+    log.info("focused node id: %s", current["window_properties"]["title"].string_value().c_str());
 
     exit(1);
 
