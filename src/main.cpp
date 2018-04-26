@@ -54,14 +54,14 @@ using nlohmann::json;
 
 json find_focused(json const &obj)
 {
-    if (obj["focused"].get<bool>() == true)
+    if (obj["focused"] == true)
     {
         return obj;
     }
     for (auto &node : obj["nodes"])
     {
         auto found = find_focused(node);
-        if (not found.is_null())
+        if (found != nullptr)
             return found;
     }
     return {};
