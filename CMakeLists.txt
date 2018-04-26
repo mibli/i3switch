@@ -10,7 +10,7 @@ message("Building ${CMAKE_PROJECT_NAME} v${GIT_REPO_VERSION}")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(3rd-party/json11/)
+add_subdirectory(3rd-party/json11/)
 
 find_package(PkgConfig)
 pkg_check_modules(ZEROMQ libzmq REQUIRED)
@@ -20,6 +20,6 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} src/*.cpp)
 include_directories(${ZEROMQ_INCLUDE_DIRS})
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-target_link_libraries(${CMAKE_PROJECT_NAME} ${ZEROMQ_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${ZEROMQ_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} json11)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION /usr/bin/)
