@@ -2,7 +2,6 @@
 #include "utils/getoptext.hpp"
 #include "utils/logging.hpp"
 #include "connection/i3client.hpp"
-#include <json11.hpp>
 
 #include <string>
 #include <iostream>
@@ -14,6 +13,7 @@
 
 #include <thread>
 #include <chrono>
+#include <nlohmann/json.hpp>
 
 std::string command(std::string const &command, bool strip_last = true)
 {
@@ -50,16 +50,17 @@ void print_help_and_die(getoptext::Parser &p, char const *msg)
     exit(1);
 }
 
-json11::Json find_focused(json11::Json const &obj)
+using nlohmann::json;
+
+json find_focused(json const &obj)
 {
-    if (obj["focused"].bool_value() == true)
+    if (obj["focused"].get<bool>() == true)
     {
         return obj;
     }
-    auto &nodes = obj["nodes"].array_items();
-    for (auto &needle : nodes)
+    for (auto &node : obj["nodes"])
     {
-        auto found = find_focused(needle);
+        auto found = find_focused(node);
         if (not found.is_null())
             return found;
     }
@@ -88,9 +89,9 @@ int main(int argc, char const **argv)
 
     //log.info("Received message:\n%s", result.c_str());
     std::string err;
-    auto tree = json11::Json::parse(result, err);
+    auto tree = json::parse(result);
     auto current = find_focused(tree);
-    log.info("focused node id: %s", current["window_properties"]["title"].string_value().c_str());
+    log.info("focused node id: %ld", current["id"].get<uint64_t>());
 
     exit(1);
 
