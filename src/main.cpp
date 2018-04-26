@@ -2,6 +2,7 @@
 #include "utils/getoptext.hpp"
 #include "utils/logging.hpp"
 #include "connection/i3client.hpp"
+#include "i3tree.hpp"
 
 #include <string>
 #include <iostream>
@@ -50,23 +51,10 @@ void print_help_and_die(getoptext::Parser &p, char const *msg)
     exit(1);
 }
 
-using nlohmann::json;
-
-json find_focused(json const &obj)
-{
-    if (obj["focused"] == true)
-    { return obj; }
-    for (auto &node : obj["nodes"])
-    {
-        auto found = find_focused(node);
-        if (found != nullptr)
-        { return found; }
-    }
-    return nullptr;
-}
-
 int main(int argc, char const **argv)
 {
+    using nlohmann::json;
+
     getoptext::Parser parser({
         {"d", "direction", ""},
         {"t", "tab", ""},
@@ -87,9 +75,12 @@ int main(int argc, char const **argv)
 
     //log.info("Received message:\n%s", result.c_str());
     std::string err;
-    auto tree = json::parse(result);
-    auto current = find_focused(tree);
+    i3::Tree tree (json::parse(result));
+    auto current = tree.find_focused();
     log.info("focused node id: %ld", current["id"].get<uint64_t>());
+    auto parent = tree.find_parent_of(current);
+    log.info("focused parent id: %ld", current["id"].get<uint64_t>());
+    log.info("focused parent %s in tabbed layout", parent["layout"] == "tabbed" ? "is" : "is not");
 
     exit(1);
 
