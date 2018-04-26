@@ -51,6 +51,11 @@ void print_help_and_die(getoptext::Parser &p, char const *msg)
     exit(1);
 }
 
+int constexpr strlength(char const *str)
+{
+    return *str ? 1 + strlength(str + 1) : 0;
+}
+
 int main(int argc, char const **argv)
 {
     using nlohmann::json;
@@ -79,10 +84,34 @@ int main(int argc, char const **argv)
     auto current = tree.find_focused();
     log.info("focused node id: %ld", current["id"].get<uint64_t>());
     auto parent = tree.find_parent_of(current);
-    log.info("focused parent id: %ld", current["id"].get<uint64_t>());
+    log.info("focused parent id: %ld", parent["id"].get<uint64_t>());
     log.info("focused parent %s in tabbed layout", parent["layout"] == "tabbed" ? "is" : "is not");
 
-    exit(1);
+    json prev = nullptr;
+    for (auto node : parent["nodes"])
+    {
+        if (node["focused"] == true)
+        {
+            break;
+        }
+        prev = node;
+    }
+    if (prev == nullptr)
+    {
+        log.error("Previous tab not found");
+        exit(1);
+    }
+
+    char const *format = "[con_id=%ld] focus";
+    size_t const length = 64 + strlength(format);
+    char request [length];
+    sprintf(request, format, prev["id"].get<uint64_t>());
+    log.info("request: %s", request);
+    //FIXME generates proper command, but doesn't run and doesn't return success
+    auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
+    log.info("response: %s", reply.c_str());
+
+    exit(0);
 
     parser.parse(argc, argv);
     auto number = parser["number"].to<int>();
