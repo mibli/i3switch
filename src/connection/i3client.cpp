@@ -7,10 +7,10 @@ namespace i3
 std::vector<uint8_t> pack(RequestType type, std::string const &payload)
 {
     Header header(type, payload.length());
-    std::vector<uint8_t> bytes (sizeof(i3_ipc_header) + header.size);
     auto const header_ptr = reinterpret_cast<uint8_t *>(&header);
-    std::copy(header_ptr, header_ptr + sizeof(i3_ipc_header), bytes.begin());
-    std::copy(payload.begin(), payload.end(), bytes.end());
+    std::vector<uint8_t> bytes (header_ptr, header_ptr + sizeof(header));
+    bytes.reserve(sizeof(header) + header.size);
+    std::copy(payload.begin(), payload.end(), std::back_inserter(bytes));
     return bytes;
 }
 
@@ -30,7 +30,6 @@ std::string Client::request(RequestType type, std::string const &payload)
     std::thread receiver_thread{[this, &result, type]() {
         result = this->receive(static_cast<ReturnType>(type));
     }};
-    //std::this_thread::sleep_for(std::chrono::seconds(5));
     auto msg = pack(type, payload);
     socket.write(msg);
     logger.info("Sent %dB request", msg.size());
