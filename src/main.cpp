@@ -102,12 +102,13 @@ int main(int argc, char const **argv)
     if (parser["number"].isSet)
     {
         auto tab_number = parser["number"].to<int>();
-        if (tab_number > parent["nodes"].size())
+        json nodes = parent["nodes"];
+        if (tab_number > nodes.size())
         {
-            log.error("No tab number %d (only %d tabs)", tab_number, parent["nodes"].size());
+            log.error("No tab number %d (only %d tabs)", tab_number, nodes.size());
             exit(1);
         }
-        auto id = parent["nodes"][tab_number - 1]["id"].get<uint64_t>();
+        auto id = nodes[tab_number - 1]["id"].get<uint64_t>();
 
         char *request = strprintf("[con_id=%ld] focus", id);
         log.info("request: %s", request);
@@ -118,9 +119,47 @@ int main(int argc, char const **argv)
     }
     else if (parser["direction"].isSet)
     {
-        if (parser["tabs"].isSet)
+        if (parser["tab"].isSet)
         {
             // switch to tab (left, right)
+            json nodes = parent["nodes"];
+            json target = nullptr;
+            std::string direction = parser["direction"].to<std::string>();
+            if (direction == "left")
+            {
+                for (auto itr = nodes.begin(); itr != nodes.end(); itr++)
+                {
+                    if ((*itr)["focused"] == true)
+                        break;
+                    target = (*itr);
+                }
+            }
+            else if (direction == "right")
+            {
+                for (auto itr = nodes.rbegin(); itr != nodes.rend(); itr++)
+                {
+                    if ((*itr)["focused"] == true)
+                        break;
+                    target = (*itr);
+                }
+            }
+            else
+            {
+                log.error("Can't switch to %s tab, don't know where it is", direction.c_str());
+                exit(1);
+            }
+            if (target == nullptr)
+            {
+                log.error("Can't switch to %s tab, tab not found", direction.c_str());
+                exit(1);
+            }
+
+            auto id = target["id"].get<uint64_t>();
+
+            char *request = strprintf("[con_id=%ld] focus", id);
+            auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
+            free(request);
+            log.info("response: %s", reply.c_str());
         }
         else
         {
@@ -128,27 +167,5 @@ int main(int argc, char const **argv)
         }
     }
 
-    return 0;
-    //int number = 0;
-    //if (parser.exists("number"))
-    //    number = parser.retrieve<int>("number");
-
-    //if (not parser.exists("direction"))
-    //{
-    //    if (parser.exists("tab"))
-    //    {
-    //        print_help_and_die(parser,
-    //                "Use --tab only with -d or --direction");
-    //    }
-    //    if (parser.exists("parent"))
-    //    {
-    //        print_help_and_die(parser,
-    //                "Use --parent only with -d or --direction");
-    //    }
-    //}
-    //if (parser.exists("number") and number <= 0)
-    //{
-    //    print_help_and_die(parser, "Tab indexes start from 1");
-    //}
     return 0;
 }
