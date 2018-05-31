@@ -14,7 +14,7 @@ struct Option
     std::string longName;
     std::string description;
     std::string value;
-    bool exists {false};
+    bool isSet {false};
 
     Option(std::string shortName)
         : shortName(shortName) {}
@@ -68,7 +68,7 @@ public:
                     {
                         if(opt.longName == needle)
                         {
-                            opt.exists = true;
+                            opt.isSet = true;
                             current = &opt;
                             break;
                         }
@@ -81,7 +81,7 @@ public:
                     {
                         if(opt.shortName == needle)
                         {
-                            opt.exists = true;
+                            opt.isSet = true;
                             current = &opt;
                             break;
                         }
