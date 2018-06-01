@@ -11,6 +11,8 @@ using nlohmann::json;
 class Tree
 {
 public:
+    json root;
+
     Tree(json root);
     Tree(Tree const &) = delete;
     ~Tree() = default;
@@ -24,6 +26,7 @@ public:
     static json find_focused(json &haystack);
     static json find_parent_of(json &haystack, json const &needle);
     static json find_tabbed(json &haystack, json const &needle);
+    static json get_focused_child(json &haystack, size_t depth = SIZE_MAX);
     static void print_node(json &parent, size_t level = 0, std::string const &prefix = "  ");
 
     //bindings for the root
@@ -43,9 +46,6 @@ public:
     {
         return find_tabbed(root, element);
     }
-
-   private:
-    json root;
 };
 
 }

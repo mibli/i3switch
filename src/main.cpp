@@ -97,9 +97,14 @@ int main(int argc, char const **argv)
     auto result = i3_client.request(i3::RequestType::GET_TREE, "");
     i3::Tree tree (json::parse(result));
 
-    json current = tree.find_focused();
-    json parent = tree.find_parent_of(current);
+    json current = tree.get_focused_child(tree.root);
+    json parent = tree.find_tabbed(current);
     tree.print_node(parent);
+    for (json &id : parent["focus"])
+    {
+        printf("Focus:");
+        printf("%ld\n", id.get<uint64_t>());
+    }
 
     if (parser["number"].isSet)
     {
@@ -110,7 +115,7 @@ int main(int argc, char const **argv)
             log.error("No tab number %d (only %d tabs)", tab_number, nodes.size());
             exit(1);
         }
-        auto id = nodes[tab_number - 1]["id"].get<uint64_t>();
+        uint64_t id = nodes[tab_number - 1]["id"].get<uint64_t>();
 
         std::string request = stringf("[con_id=%ld] focus", id);
         log.info("request: %s", request.c_str());
@@ -126,11 +131,12 @@ int main(int argc, char const **argv)
             json nodes = parent["nodes"];
             json target = nullptr;
             std::string direction = parser["direction"].to<std::string>();
+            json &focus_id = parent["focus"][0];
             if (direction == "left")
             {
                 for (auto itr = nodes.begin(); itr != nodes.end(); itr++)
                 {
-                    if ((*itr)["focused"] == true)
+                    if ((*itr)["id"] == focus_id)
                         break;
                     target = (*itr);
                 }
@@ -139,7 +145,7 @@ int main(int argc, char const **argv)
             {
                 for (auto itr = nodes.rbegin(); itr != nodes.rend(); itr++)
                 {
-                    if ((*itr)["focused"] == true)
+                    if ((*itr)["id"] == focus_id)
                         break;
                     target = (*itr);
                 }
