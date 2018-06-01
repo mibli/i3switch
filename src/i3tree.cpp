@@ -76,6 +76,36 @@ json Tree::get_focused_child(json &haystack, size_t depth)
     return node;
 }
 
+json Tree::get_next_child(json &container)
+{
+    assert(container != nullptr);
+    json &focus_id = container["focus"][0];
+    json &nodes = container["nodes"];
+    json node = nullptr;
+    for (auto itr = nodes.rbegin(); itr != nodes.rend(); itr++)
+    {
+        if ((*itr)["id"] == focus_id)
+            break;
+        node = (*itr);
+    }
+    return node;
+}
+
+json Tree::get_prev_child(json &container)
+{
+    assert(container != nullptr);
+    json &focus_id = container["focus"][0];
+    json &nodes = container["nodes"];
+    json node = nullptr;
+    for (auto itr = nodes.begin(); itr != nodes.end(); itr++)
+    {
+        if ((*itr)["id"] == focus_id)
+            break;
+        node = (*itr);
+    }
+    return node;
+}
+
 void Tree::print_node(json &parent, size_t level, std::string const &prefix)
 {
     assert(parent != nullptr);

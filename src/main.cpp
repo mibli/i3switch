@@ -99,77 +99,50 @@ int main(int argc, char const **argv)
 
     json current = tree.get_focused_child(tree.root);
     json parent = tree.find_tabbed(current);
-    tree.print_node(parent);
-    for (json &id : parent["focus"])
-    {
-        printf("Focus:");
-        printf("%ld\n", id.get<uint64_t>());
-    }
+    json target;
 
     if (parser["number"].isSet)
     {
         auto tab_number = parser["number"].to<int>();
         json nodes = parent["nodes"];
         if (tab_number > nodes.size())
-        {
             log.critical("No tab number %d (only %d tabs)", tab_number, nodes.size());
-        }
-        uint64_t id = nodes[tab_number - 1]["id"].get<uint64_t>();
 
-        std::string request = stringf("[con_id=%ld] focus", id);
-        log.info("request: %s", request.c_str());
-
-        auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
-        log.info("response: %s", reply.c_str());
+        target = nodes[tab_number - 1];
+        target = i3::Tree::get_focused_child(target);
     }
     else if (parser["direction"].isSet)
     {
         if (parser["tab"].isSet)
         {
             // switch to tab (left, right)
-            json nodes = parent["nodes"];
-            json target = nullptr;
             std::string direction = parser["direction"].to<std::string>();
-            json &focus_id = parent["focus"][0];
+
             if (direction == "left")
-            {
-                for (auto itr = nodes.begin(); itr != nodes.end(); itr++)
-                {
-                    if ((*itr)["id"] == focus_id)
-                        break;
-                    target = (*itr);
-                }
-            }
+                target = i3::Tree::get_prev_child(parent);
             else if (direction == "right")
-            {
-                for (auto itr = nodes.rbegin(); itr != nodes.rend(); itr++)
-                {
-                    if ((*itr)["id"] == focus_id)
-                        break;
-                    target = (*itr);
-                }
-            }
+                target = i3::Tree::get_next_child(parent);
             else
-            {
-                log.critical("Can't switch to %s tab, don't know where it is", direction.c_str());
-            }
+                log.critical("Can't switch to %s tab, I don't know where it is",
+                             direction.c_str());
+
             if (target == nullptr)
-            {
-                log.critical("Can't switch to %s tab, tab not found", direction.c_str());
-            }
+                log.critical("Can't switch to %s tab, tab not found",
+                             direction.c_str());
 
-            auto id = target["id"].get<uint64_t>();
-
-            std::string request = stringf("[con_id=%ld] focus", id);
-            log.info("request: %s", request.c_str());
-            auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
-            log.info("response: %s", reply.c_str());
+            target = i3::Tree::get_focused_child(target);
         }
         else
         {
             // switch in direction
         }
     }
+
+    uint64_t target_id = target["id"].get<uint64_t>();
+    std::string request = stringf("[con_id=%ld] focus", target_id);
+    log.info("request: %s", request.c_str());
+    auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
+    log.info("response: %s", reply.c_str());
 
     return 0;
 }
