@@ -112,8 +112,7 @@ int main(int argc, char const **argv)
         json nodes = parent["nodes"];
         if (tab_number > nodes.size())
         {
-            log.error("No tab number %d (only %d tabs)", tab_number, nodes.size());
-            exit(1);
+            log.critical("No tab number %d (only %d tabs)", tab_number, nodes.size());
         }
         uint64_t id = nodes[tab_number - 1]["id"].get<uint64_t>();
 
@@ -152,13 +151,11 @@ int main(int argc, char const **argv)
             }
             else
             {
-                log.error("Can't switch to %s tab, don't know where it is", direction.c_str());
-                exit(1);
+                log.critical("Can't switch to %s tab, don't know where it is", direction.c_str());
             }
             if (target == nullptr)
             {
-                log.error("Can't switch to %s tab, tab not found", direction.c_str());
-                exit(1);
+                log.critical("Can't switch to %s tab, tab not found", direction.c_str());
             }
 
             auto id = target["id"].get<uint64_t>();

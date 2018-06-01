@@ -95,6 +95,8 @@ namespace logging {
         inline void critical(char const *format, Args...args)
         {
             this->log<Args...>(CRITICAL, format, args...);
+            //TODO EXIT_CODES
+            exit(1);
         }
 
         template<typename ...Args>
