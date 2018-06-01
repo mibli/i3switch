@@ -96,8 +96,10 @@ int main(int argc, char const **argv)
 
     auto result = i3_client.request(i3::RequestType::GET_TREE, "");
     i3::Tree tree (json::parse(result));
-    auto current = tree.find_focused();
-    auto parent = tree.find_parent_of(current);
+
+    json current = tree.find_focused();
+    json parent = tree.find_parent_of(current);
+    tree.print_node(parent);
 
     if (parser["number"].isSet)
     {
@@ -156,6 +158,7 @@ int main(int argc, char const **argv)
             auto id = target["id"].get<uint64_t>();
 
             std::string request = stringf("[con_id=%ld] focus", id);
+            log.info("request: %s", request.c_str());
             auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
             log.info("response: %s", reply.c_str());
         }
