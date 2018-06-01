@@ -60,6 +60,22 @@ json Tree::find_tabbed(json &haystack, json const &needle)
     return node;
 }
 
+json Tree::get_focused_child(json &haystack, size_t depth)
+{
+    assert(haystack != nullptr);
+    json node = haystack;
+    for (; depth > 0; --depth)
+    {
+        if (node["focus"].empty())
+            break;
+        json id = node["focus"][0];
+        for (auto &child : node["nodes"])
+            if (child["id"] == id)
+                node = child;
+    }
+    return node;
+}
+
 void Tree::print_node(json &parent, size_t level, std::string const &prefix)
 {
     assert(parent != nullptr);
