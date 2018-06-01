@@ -110,11 +110,10 @@ int main(int argc, char const **argv)
         }
         auto id = nodes[tab_number - 1]["id"].get<uint64_t>();
 
-        char *request = strprintf("[con_id=%ld] focus", id);
-        log.info("request: %s", request);
+        std::string request = stringf("[con_id=%ld] focus", id);
+        log.info("request: %s", request.c_str());
 
         auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
-        free(request);
         log.info("response: %s", reply.c_str());
     }
     else if (parser["direction"].isSet)
@@ -156,9 +155,8 @@ int main(int argc, char const **argv)
 
             auto id = target["id"].get<uint64_t>();
 
-            char *request = strprintf("[con_id=%ld] focus", id);
+            std::string request = stringf("[con_id=%ld] focus", id);
             auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
-            free(request);
             log.info("response: %s", reply.c_str());
         }
         else
