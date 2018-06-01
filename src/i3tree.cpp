@@ -46,4 +46,33 @@ json Tree::find_parent_of(json &haystack, json const &needle)
     return find_where(haystack, [&needle](json const &obj){ return is_parent_of(obj, needle); });
 }
 
+json Tree::find_tabbed(json &haystack, json const &needle)
+{
+    assert(haystack != nullptr);
+    assert(needle != nullptr);
+    auto node = needle;
+    while (node["layout"] != "tabbed")
+    {
+        node = find_parent_of(haystack, node);
+        if (node == nullptr)
+            break;
+    }
+    return node;
+}
+
+void Tree::print_node(json &parent, size_t level, std::string const &prefix)
+{
+    assert(parent != nullptr);
+    for (size_t i=0; i < level; ++i)
+        printf("%s", prefix.c_str());
+    printf("%ld", parent["id"].get<uint64_t>());
+    if (parent["focused"] == true)
+        printf("*");
+    printf("\n");
+    for (json child : parent["nodes"])
+    {
+        print_node(child, level + 1, prefix);
+    }
+}
+
 }

@@ -15,10 +15,9 @@ char *cstringf(char const *format, Args...args)
 template<typename ...Args>
 std::string stringf(char const *format, Args...args)
 {
-    size_t const length = snprintf(nullptr, 0, format, args...);
-    std::string buffer;
-    buffer.reserve(length);
-    sprintf(buffer.data(), format, args...);
+    size_t const length = snprintf(nullptr, 0, format, args...) + 1;
+    std::string buffer(length, '\0');
+    snprintf(&buffer[0], length, format, args...);
     return buffer;
 }
 
