@@ -1,7 +1,7 @@
 //#include <nlohmann/json.hpp>
 #include "utils/getoptext.hpp"
 #include "utils/logging.hpp"
-#include "utils/strprintf.hpp"
+#include "utils/stringf.hpp"
 #include "connection/i3client.hpp"
 #include "i3tree.hpp"
 
