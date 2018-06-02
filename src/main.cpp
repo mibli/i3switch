@@ -61,6 +61,12 @@ int main(int argc, char const **argv)
 {
     using nlohmann::json;
 
+    // FIXME: I don't like this. It's not very readable.
+    // and the isSet is annoying.
+    // I'd rather use something like git has: eg.
+    // >> i3switch down
+    // >> i3switch tab 2
+    // >> i3switch tab left
     getoptext::Parser parser({
         {"d", "direction", ""},
         {"t", "tab", ""},
@@ -103,6 +109,7 @@ int main(int argc, char const **argv)
 
     if (parser["number"].isSet)
     {
+        // switch to tab number
         auto tab_number = parser["number"].to<int>();
         json nodes = parent["nodes"];
         if (tab_number > nodes.size())
@@ -113,11 +120,12 @@ int main(int argc, char const **argv)
     }
     else if (parser["direction"].isSet)
     {
+        // switch in direction
+        std::string direction = parser["direction"].to<std::string>();
+
         if (parser["tab"].isSet)
         {
             // switch to tab (left, right)
-            std::string direction = parser["direction"].to<std::string>();
-
             if (direction == "left")
                 target = i3::Tree::get_prev_child(parent);
             else if (direction == "right")
@@ -134,7 +142,28 @@ int main(int argc, char const **argv)
         }
         else
         {
-            // switch in direction
+            // OLD APPROACH
+            // lookup slpith layouts until theres one with a node in the
+            // requested direction in relation to the focused one,
+            // otherwise wrap on the closest one
+            //
+            // NEW APPROACH
+            // same except instead of taking "focus" into account, try to
+            // match positions to the cursor.
+            //
+            // if (direction == "left")
+            // if (direction == "right")
+            // if (direction == "up")
+            // if (direction == "down")
+            if (parser["parent"].isSet)
+            {
+                // SWITCH the container containing the tabs layout
+            }
+            else
+            {
+                // SWITCH in the tabs, if nothing in the direction, fallback to
+                // "parent"
+            }
         }
     }
 
