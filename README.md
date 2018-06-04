@@ -49,6 +49,8 @@ doesn't exactly go where You expect it to go.
 
 ### Planned features
 
+* wrap option for switch to next/previous tab
+
 * commands instead of options
 
       # I think these would be more readable and adequate
