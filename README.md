@@ -3,7 +3,7 @@ i3switch
 
 Application which aims to make some of the focus movement in i3 more intuitive.
 
-It's initial version was written in python, however python was to slow to start,
+It's initial version was written in python, however python was too slow to start,
 so the control felt unresponsive, so I switched to c++
 
 ### What does it do
@@ -28,13 +28,12 @@ tab switching from focus movement.
 
 :pushpin: *EXAMPLE*
 
-#### Uintuitive focus
+#### Unintuitive focus
 
 One of another annoyances of i3 is that, when moving focus in direction, it
-doesn't exactly go where You expect it to go.
+doesn't exactly go where You expect it to go. Example below.
 
-:pushpin: *EXAMPLE*
-
+![Unintuitive Focus Example](docs/img/unintuitive_focus_01.svg)
 
 ### Current Features
 
