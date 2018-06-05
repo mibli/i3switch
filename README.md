@@ -75,20 +75,11 @@ _Example of the issue it resolves:_
 
 ### Building
 
-    ./build.sh
-
-or
-
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release  # this one might not be tested, I use Debug
-    make
+    ./build.sh release
 
 ### Installation
 
-:pushpin: *Proper CMake install*
-
-    sudo cp build/i3switch /usr/local/bin/i3switch
+    sudo make -C build install
 
 ### Depends
 
