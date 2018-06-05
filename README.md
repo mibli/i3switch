@@ -26,12 +26,16 @@ want to dive into structures of the windows.
 i3switch aims to resolve that issue, giving You a tool that allows to separate
 tab switching from focus movement.
 
-:pushpin: *EXAMPLE*
+_Examples of the issues it resolves:_
+
+![Tab Focus Example](docs/img/tab_focus_01.svg)
 
 #### Unintuitive focus
 
 One of another annoyances of i3 is that, when moving focus in direction, it
-doesn't exactly go where You expect it to go. Example below.
+doesn't exactly go where You expect it to go.
+
+_Example of the issue it resolves:_
 
 ![Unintuitive Focus Example](docs/img/unintuitive_focus_01.svg)
 
@@ -65,7 +69,7 @@ doesn't exactly go where You expect it to go. Example below.
 
 * visual space focus movement
 
-  :pushpin: *EXAMPLE*
+    Same as in [Tabs](#tabs)
 
       i3switch right
 
