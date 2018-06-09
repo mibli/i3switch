@@ -1,9 +1,10 @@
-//#include <nlohmann/json.hpp>
-#include "utils/getoptext.hpp"
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
 #include "connection/i3client.hpp"
 #include "i3tree.hpp"
+
+#include <nlohmann/json.hpp>
+#include <clipp.h>
 
 #include <string>
 #include <iostream>
@@ -15,9 +16,8 @@
 
 #include <thread>
 #include <chrono>
-#include <nlohmann/json.hpp>
 
-std::string command(std::string const &command, bool strip_last = true)
+std::string call(std::string const &command, bool strip_last = true)
 {
     FILE *pipe = popen(command.c_str(), "r");
     if (pipe == nullptr)
@@ -45,57 +45,51 @@ std::string command(std::string const &command, bool strip_last = true)
     return result;
 }
 
-void print_help_and_die(getoptext::Parser &p, char const *msg)
-{
-    p.print_help();
-    std::cout << msg << std::endl;
-    exit(1);
-}
-
 int constexpr strlength(char const *str)
 {
     return *str ? 1 + strlength(str + 1) : 0;
 }
 
-int main(int argc, char const **argv)
+int main(int argc, char *argv [])
 {
     using nlohmann::json;
-
-    // FIXME: I don't like this. It's not very readable.
-    // and the isSet is annoying.
-    // I'd rather use something like git has: eg.
-    // >> i3switch down
-    // >> i3switch tab 2
-    // >> i3switch tab left
-    getoptext::Parser parser({
-        {"d", "direction", ""},
-        {"t", "tab", ""},
-        {"p", "parent", ""},
-        {"n", "number", ""}
-    });
 
     logging::Logger log;
     log.configure("%s:%s()  ", __FILENAME__, __func__);
 
-    // Verify arguments
-    parser.parse(argc, argv);
-    if (parser["number"].isSet)
+    size_t order;
+
+    enum class Command {help, prev, next, number};
+    Command command = Command::help;
+
+    auto args = (
+        (clipp::option("-h", "--help").set(command, Command::help) %
+            "show this help message") |
+        "tab switching" % (
+        (clipp::option("prev").set(command, Command::prev) %
+            "focus previous tab") |
+        (clipp::option("next").set(command, Command::next) %
+            "focus next tab") |
+        (clipp::command("number").set(command, Command::number) % "focus tab N, where N in [1..]",
+         clipp::value("N", order)
+        )
+        )
+    );
+
+    if (not clipp::parse(argc, argv, args) or command == Command::help)
     {
-        if (not parser["tab"].isSet)
-            print_help_and_die(parser, "Use --number with --tab only");
-        if (parser["number"].to<int>() == 0)
-            print_help_and_die(parser, "Tab indexes start from 1");
+        std::cout << clipp::make_man_page(args, argv[0]);
+        return 0;
     }
-    else if (not parser["direction"].isSet)
+
+    // Verify args
+    if (command == Command::number and order == 0)
     {
-        if (parser["tab"].isSet)
-            print_help_and_die(parser, "Use --tab only with -d or --direction");
-        if (parser["parent"].isSet)
-            print_help_and_die(parser, "Use --parent only with -d or --direction");
+        std::cerr << "Tab order must be greater than 0";
     }
 
     // Get socket directory name
-    std::string i3_socket_path = command("i3 --get-socketpath");
+    std::string i3_socket_path = call("i3 --get-socketpath");
 
     // Create socket connection
     i3::Client i3_client(i3_socket_path);
@@ -107,65 +101,44 @@ int main(int argc, char const **argv)
     json parent = tree.find_tabbed(current);
     json target;
 
-    if (parser["number"].isSet)
+    if (command == Command::number)
     {
         // switch to tab number
-        auto tab_number = parser["number"].to<int>();
         json nodes = parent["nodes"];
-        if (tab_number > nodes.size())
-            log.critical("No tab number %d (only %d tabs)", tab_number, nodes.size());
+        if (order > nodes.size())
+            log.critical("No tab number %d (only %d tabs)", order, nodes.size());
 
-        target = nodes[tab_number - 1];
+        target = nodes[order - 1];
         target = i3::Tree::get_focused_child(target);
     }
-    else if (parser["direction"].isSet)
+    else if (command == Command::prev or command == Command::next)
     {
-        // switch in direction
-        std::string direction = parser["direction"].to<std::string>();
-
-        if (parser["tab"].isSet)
-        {
-            // switch to tab (left, right)
-            if (direction == "left")
-                target = i3::Tree::get_prev_child(parent);
-            else if (direction == "right")
-                target = i3::Tree::get_next_child(parent);
-            else
-                log.critical("Can't switch to %s tab, I don't know where it is",
-                             direction.c_str());
-
-            if (target == nullptr)
-                log.critical("Can't switch to %s tab, tab not found",
-                             direction.c_str());
-
-            target = i3::Tree::get_focused_child(target);
-        }
+        if (command == Command::prev)
+            target = i3::Tree::get_prev_child(parent);
         else
-        {
-            // OLD APPROACH
-            // lookup slpith layouts until theres one with a node in the
-            // requested direction in relation to the focused one,
-            // otherwise wrap on the closest one
-            //
-            // NEW APPROACH
-            // same except instead of taking "focus" into account, try to
-            // match positions to the cursor.
-            //
-            // if (direction == "left")
-            // if (direction == "right")
-            // if (direction == "up")
-            // if (direction == "down")
-            if (parser["parent"].isSet)
-            {
-                // SWITCH the container containing the tabs layout
-            }
-            else
-            {
-                // SWITCH in the tabs, if nothing in the direction, fallback to
-                // "parent"
-            }
-        }
+            target = i3::Tree::get_next_child(parent);
+
+        if (target == nullptr)
+            log.critical("%s", "Can't switch to tab, tab not found");
+
+        target = i3::Tree::get_focused_child(target);
     }
+    //else if (left or up or right or down)
+    //{
+    //    // OLD APPROACH
+    //    // lookup slpith layouts until theres one with a node in the
+    //    // requested direction in relation to the focused one,
+    //    // otherwise wrap on the closest one
+    //    //
+    //    // NEW APPROACH
+    //    // same except instead of taking "focus" into account, try to
+    //    // match positions to the cursor.
+    //    //
+    //    // if (left)
+    //    // if (right)
+    //    // if (up)
+    //    // if (down)
+    //}
 
     uint64_t target_id = target["id"].get<uint64_t>();
     std::string request = stringf("[con_id=%ld] focus", target_id);

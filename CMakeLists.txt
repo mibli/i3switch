@@ -14,6 +14,7 @@ find_package(PkgConfig)
 find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} src/*.cpp)
+include_directories(args PRIVATE ${CMAKE_SOURCE_DIR}/ext/clipp/include)
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${ZEROMQ_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
