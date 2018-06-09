@@ -39,23 +39,13 @@ The movement now can be separated into tab, and directional movement:
 
 * switch to nth tab of closest ancestor tabbed container
 
-      i3switch -t -n TAB_ORDER
+      i3switch number N
 
 * switch to next/previous tab
 
-      i3switch -t -d (LEFT|RIGHT)
-
+      i3switch (left|right) [wrap]
 
 ### Planned features
-
-* wrap option for switch to next/previous tab
-
-* commands instead of options
-
-      # I think these would be more readable and adequate
-      i3switch tab next   # move focus to next tab
-      i3switch tab 1      # move focus to 1st tab
-      i3switch right      # move focus to right
 
 * stacks support
 
