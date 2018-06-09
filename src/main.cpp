@@ -124,9 +124,9 @@ int main(int argc, char *argv [])
     else if (command == Command::prev or command == Command::next)
     {
         if (command == Command::prev)
-            target = i3::Tree::get_prev_child(parent);
+            target = i3::Tree::get_delta_child(parent, -1, wrap);
         else
-            target = i3::Tree::get_next_child(parent);
+            target = i3::Tree::get_delta_child(parent, +1, wrap);
 
         if (target == nullptr)
             log.critical("%s", "Can't switch to tab, tab not found");
