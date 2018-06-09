@@ -63,16 +63,20 @@ int main(int argc, char *argv [])
     Command command = Command::help;
 
     auto args = (
-        (clipp::option("-h", "--help").set(command, Command::help) %
-            "show this help message") |
-        "tab switching" % (
-            (clipp::option("prev").set(command, Command::prev) %
-                "focus previous tab") |
-            (clipp::option("next").set(command, Command::next) %
-                "focus next tab") |
-            (clipp::command("number").set(command, Command::number) %
-                 "focus tab N, where N in [1..]",
-             clipp::value("N", order))
+        clipp::one_of(
+            clipp::option("-h", "--help").set(command, Command::help)
+                .doc("show this help message"),
+            clipp::one_of(
+                clipp::option("prev").set(command, Command::prev)
+                    .doc("focus previous tab"),
+                clipp::option("next").set(command, Command::next)
+                    .doc( "focus next tab"),
+                clipp::in_sequence(
+                    clipp::command("number").set(command, Command::number)
+                        .doc("focus tab N, where N in [1..]"),
+                    clipp::value("N", order)
+                )
+            ).doc("tab switching")
         )
     );
 
