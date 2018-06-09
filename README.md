@@ -45,6 +45,10 @@ The movement now can be separated into tab, and directional movement:
 
       i3switch (left|right) [wrap]
 
+  * tab wrapping
+
+    ![Focus tab wrap](docs/img/focus_direction_tab_wrap_good.svg)
+
 ### Planned features
 
 * stacks support
@@ -53,12 +57,6 @@ The movement now can be separated into tab, and directional movement:
       i3switch stack 2    # switch to 2nd stack element
       i3switch any 3      # switch to 3rd tab or stack element
 
-* tab wrapping
-
-  For true tab experience, let's give users an option to wrap next tab to the
-  first tab
-
-  ![Focus tab wrap](docs/img/focus_direction_tab_wrap_good.svg)
 
 * visual space focus movement
 
