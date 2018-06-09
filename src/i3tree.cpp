@@ -1,4 +1,5 @@
 #include "i3tree.hpp"
+#include "iostream"
 
 namespace i3
 {
@@ -74,6 +75,27 @@ json Tree::get_focused_child(json &haystack, size_t depth)
                 node = child;
     }
     return node;
+}
+
+json Tree::get_delta_child(json &container, int delta, bool wrap)
+{
+    assert(container != nullptr);
+    json &focus_id = container["focus"][0];
+    json &nodes = container["nodes"];
+    int focused = 0;
+    for (auto &node : nodes)
+    {
+        if (node["id"] == focus_id)
+            break;
+        std::cerr << "works" << std::endl;
+        focused++;
+    }
+    int size = nodes.size();
+    size_t focus = wrap ? ((focused + delta) % size + size) % size
+                        : focused + delta;
+    if (focus > size)
+        return nullptr;
+    return nodes[focus];
 }
 
 json Tree::get_next_child(json &container)

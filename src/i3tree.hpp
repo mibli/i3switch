@@ -27,6 +27,7 @@ public:
     static json find_parent_of(json &haystack, json const &needle);
     static json find_tabbed(json &haystack, json const &needle);
     static json get_focused_child(json &haystack, size_t depth = SIZE_MAX);
+    static json get_delta_child(json &container, int delta, bool wrap);
     static json get_next_child(json &container);
     static json get_prev_child(json &container);
     static void print_node(json &parent, size_t level = 0, std::string const &prefix = "  ");
