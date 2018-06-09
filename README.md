@@ -26,18 +26,14 @@ want to dive into structures of the windows.
 i3switch aims to resolve that issue, giving You a tool that allows to separate
 tab switching from focus movement.
 
-_Examples of the issues it resolves:_
+Example of the issue:
 
-![Tab Focus Example](docs/img/tab_focus_01.svg)
+![Bad tab focus example](docs/img/focus_direction_tab_bad.svg)
 
-#### Unintuitive focus
+The movement now can be separated into tab, and directional movement:
 
-One of another annoyances of i3 is that, when moving focus in direction, it
-doesn't exactly go where You expect it to go.
-
-_Example of the issue it resolves:_
-
-![Unintuitive Focus Example](docs/img/unintuitive_focus_01.svg)
+![Good tab focus example](docs/img/focus_direction_tab_next_good.svg)
+![Good tab focus next example](docs/img/focus_direction_tab_good.svg)
 
 ### Current Features
 
@@ -67,11 +63,27 @@ _Example of the issue it resolves:_
       i3switch stack 2    # switch to 2nd stack element
       i3switch any 3      # switch to 3rd tab or stack element
 
+* tab wrapping
+
+  For true tab experience, let's give users an option to wrap next tab to the
+  first tab
+
+  ![Focus tab wrap](docs/img/focus_direction_tab_wrap_good.svg)
+
 * visual space focus movement
 
-    Same as in [Tabs](#tabs)
+  Problem with i3 directional movement is that it acknowledges focus history
+  and containers over focus direction. It of course has it's pros, but often I
+  expect the focus to move in the direction in relation to the current
+  container.
 
-      i3switch right
+  Example of bad behaviour:
+
+  ![Bad directional switching](docs/img/focus_direction_bad.svg)
+
+  Let's have an option to resolve it:
+
+  ![Good directional switching](docs/img/focus_direction_good.svg)
 
 ### Building
 
