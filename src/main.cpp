@@ -70,7 +70,8 @@ int main(int argc, char *argv [])
             "focus previous tab") |
         (clipp::option("next").set(command, Command::next) %
             "focus next tab") |
-        (clipp::command("number").set(command, Command::number) % "focus tab N, where N in [1..]",
+        (clipp::command("number").set(command, Command::number) %
+             "focus tab N, where N in [1..]",
          clipp::value("N", order)
         )
         )
