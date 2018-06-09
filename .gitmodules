@@ -1,3 +1,9 @@
 [submodule "3rd-party/json11"]
 	path = 3rd-party/json11
 	url = https://github.com/dropbox/json11.git
+[submodule "ext/args"]
+	path = ext/args
+	url = https://github.com/Taywee/args.git
+[submodule "ext/clipp"]
+	path = ext/clipp
+	url = https://github.com/muellan/clipp.git
