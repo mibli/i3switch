@@ -61,21 +61,27 @@ int main(int argc, char *argv [])
 
     enum class Command {help, prev, next, number};
     Command command = Command::help;
+    bool wrap = false;
 
     auto args = (
         clipp::one_of(
             clipp::option("-h", "--help").set(command, Command::help)
                 .doc("show this help message"),
             clipp::one_of(
-                clipp::option("prev").set(command, Command::prev)
-                    .doc("focus previous tab"),
-                clipp::option("next").set(command, Command::next)
-                    .doc( "focus next tab"),
                 clipp::in_sequence(
-                    clipp::command("number").set(command, Command::number)
-                        .doc("focus tab N, where N in [1..]"),
+                    clipp::one_of(
+                        clipp::required("prev").set(command, Command::prev)
+                            .doc("focus previous"),
+                        clipp::required("next").set(command, Command::next)
+                            .doc("focus next")
+                    ),
+                    clipp::option("wrap").set(wrap, true)
+                        .doc("wrap tabs")
+                ),
+                clipp::in_sequence(
+                    clipp::command("number").set(command, Command::number),
                     clipp::value("N", order)
-                )
+                ).doc("focus tab by order, where N in [1..]")
             ).doc("tab switching")
         )
     );
@@ -127,6 +133,11 @@ int main(int argc, char *argv [])
 
         target = i3::Tree::get_focused_child(target);
     }
+    //else if (command == Command::left or command == command::up or
+    //         command == Command::right or command == Command::down)
+    //{
+    //    TODO
+    //}
     //else if (left or up or right or down)
     //{
     //    // OLD APPROACH
