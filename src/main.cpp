@@ -66,14 +66,13 @@ int main(int argc, char *argv [])
         (clipp::option("-h", "--help").set(command, Command::help) %
             "show this help message") |
         "tab switching" % (
-        (clipp::option("prev").set(command, Command::prev) %
-            "focus previous tab") |
-        (clipp::option("next").set(command, Command::next) %
-            "focus next tab") |
-        (clipp::command("number").set(command, Command::number) %
-             "focus tab N, where N in [1..]",
-         clipp::value("N", order)
-        )
+            (clipp::option("prev").set(command, Command::prev) %
+                "focus previous tab") |
+            (clipp::option("next").set(command, Command::next) %
+                "focus next tab") |
+            (clipp::command("number").set(command, Command::number) %
+                 "focus tab N, where N in [1..]",
+             clipp::value("N", order))
         )
     );
 
