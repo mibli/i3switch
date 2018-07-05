@@ -14,6 +14,7 @@
 #include <thread>
 #include <vector>
 #include <algorithm>
+#include <climits>
 
 #include <thread>
 #include <chrono>
@@ -28,7 +29,7 @@ int main(int argc, char *argv [])
 
     size_t order;
 
-    enum class Command {help, prev, next, number};
+    enum class Command {help, prev, next, number, left, up, right, down};
     Command command = Command::help;
     bool wrap = false;
 
@@ -51,7 +52,13 @@ int main(int argc, char *argv [])
                     clipp::command("number").set(command, Command::number),
                     clipp::value("N", order)
                 ).doc("focus tab by order, where N in [1..]")
-            ).doc("tab switching")
+            ).doc("tab switching"),
+            clipp::one_of(
+                clipp::required("left").set(command, Command::left),
+                clipp::required("up").set(command, Command::up),
+                clipp::required("right").set(command, Command::right),
+                clipp::required("down").set(command, Command::down)
+            )
         )
     );
 
@@ -102,11 +109,93 @@ int main(int argc, char *argv [])
 
         target = i3::Tree::get_focused_child(target);
     }
-    //else if (command == Command::left or command == command::up or
-    //         command == Command::right or command == Command::down)
-    //{
-    //    TODO
-    //}
+    else if (command == Command::left or command == Command::up or
+             command == Command::right or command == Command::down)
+    {
+        //TODO: clean it up!
+        int middle;
+        int delta;
+        char const *fst_layout;
+        char const *snd_layout;
+        std::function<bool(json const &, const char *)> matches_layout =
+            [](json const &node, const char *layout) {
+                return node["layout"] == layout and not node["nodes"].empty();
+            };
+        std::function<int(json const &)> get_middle;
+        std::function<json(json const &)> edgest;
+
+        if (command == Command::left or command == Command::up)
+            edgest = [](json const &node) {
+                return node["nodes"].front();
+            };
+        else
+            edgest = [](json const &node) {
+                return node["nodes"].back();
+            };
+
+        if (command == Command::left or command == Command::right)
+        {
+            get_middle = [](json const &node) {
+                json const &rect = node["rect"];
+                return rect["y"].get<int>() + (rect["height"].get<int>() / 2);
+            };
+            middle = get_middle(current);
+            delta = command == Command::left ? -1 : +1;
+            fst_layout = "splith";
+            snd_layout = "splitv";
+        }
+        else
+        {
+            get_middle = [](json const &node) {
+                json const &rect = node["rect"];
+                return rect["x"].get<int>() + (rect["width"].get<int>() / 2);
+            };
+            middle = get_middle(current);
+            delta = command == Command::up ? -1 : +1;
+            fst_layout = "splitv";
+            snd_layout = "splith";
+        }
+
+        std::function<bool(json const &)> can_switch =
+            [&matches_layout, &delta, &fst_layout](json const &node) {
+                return matches_layout(node, fst_layout) and
+                       i3::Tree::get_delta_child(node, delta, false) != nullptr;
+            };
+        std::function<json(json const &)> middlest =
+            [&get_middle, middle](json const &parent) {
+                json best = nullptr;
+                int best_delta = INT_MAX;
+                for (auto const &node : parent["nodes"]) {
+                    int node_delta = std::abs(middle - get_middle(node));
+                    if (node_delta < best_delta) {
+                        best = node;
+                        best_delta = node_delta;
+                    }
+                }
+                return best;
+            };
+
+        target = tree.find_matching_parent(current, can_switch);
+        target = i3::Tree::get_delta_child(target, delta, false);
+
+        while (target != nullptr)
+        {
+            if (matches_layout(target, fst_layout))
+            {
+                target = edgest(target);
+            }
+            else if (matches_layout(target, snd_layout))
+            {
+                target = middlest(target);
+            }
+            else if (not target["nodes"].empty())
+            {
+                target = tree.get_focused_child(target, 1);
+            }
+            else
+                break;
+        }
+    }
     //else if (left or up or right or down)
     //{
     //    // OLD APPROACH
