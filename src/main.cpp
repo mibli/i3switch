@@ -45,11 +45,6 @@ std::string call(std::string const &command, bool strip_last = true)
     return result;
 }
 
-int constexpr strlength(char const *str)
-{
-    return *str ? 1 + strlength(str + 1) : 0;
-}
-
 int main(int argc, char *argv [])
 {
     using nlohmann::json;
