@@ -47,6 +47,20 @@ json Tree::find_parent_of(json &haystack, json const &needle)
     return find_where(haystack, [&needle](json const &obj){ return is_parent_of(obj, needle); });
 }
 
+json Tree::find_matching_parent(json &haystack, json const &needle, std::function<bool (json const &)> matcher)
+{
+    assert(haystack != nullptr);
+    assert(needle != nullptr);
+    auto node = needle;
+    while (not matcher(node))
+    {
+        node = find_parent_of(haystack, node);
+        if (node == nullptr)
+            break;
+    }
+    return node;
+}
+
 json Tree::find_tabbed(json &haystack, json const &needle)
 {
     assert(haystack != nullptr);
@@ -77,17 +91,16 @@ json Tree::get_focused_child(json &haystack, size_t depth)
     return node;
 }
 
-json Tree::get_delta_child(json &container, int delta, bool wrap)
+json Tree::get_delta_child(json const &container, int delta, bool wrap)
 {
     assert(container != nullptr);
-    json &focus_id = container["focus"][0];
-    json &nodes = container["nodes"];
+    json const &focus_id = container["focus"][0];
+    json const &nodes = container["nodes"];
     int focused = 0;
     for (auto &node : nodes)
     {
         if (node["id"] == focus_id)
             break;
-        std::cerr << "works" << std::endl;
         focused++;
     }
     int size = nodes.size();
