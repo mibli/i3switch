@@ -126,11 +126,11 @@ int main(int argc, char *argv [])
 
         if (command == Command::left or command == Command::up)
             edgest = [](json const &node) {
-                return node["nodes"].front();
+                return node["nodes"].back();
             };
         else
             edgest = [](json const &node) {
-                return node["nodes"].back();
+                return node["nodes"].front();
             };
 
         if (command == Command::left or command == Command::right)
