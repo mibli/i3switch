@@ -15,7 +15,7 @@ template <> grid::Window to<grid::Window>(json const &node) {
 }
 
 template <> tabs::Tab to<tabs::Tab>(json const &node) {
-    return {static_cast<std::string>(node["id"])};
+    return {std::to_string(node["id"].get<int64_t>())};
 }
 
 } // namespace
@@ -40,7 +40,7 @@ std::vector<json> find_visible_children(json node) {
         }
         return result;
     } else if (layout == "tabbed" or layout == "stacking") {
-        auto focus_id = node["focus"][0];
+        int64_t focus_id = node["focus"][0];
         for (auto subnode : node["nodes"]) {
             if (subnode["id"] == focus_id) {
                 return find_visible_children(subnode);
@@ -72,27 +72,66 @@ grid::Grid visible_grid(json node) {
 }
 
 json find_deepest_focused_tabbed(json node) {
-    int focus_id = node["focus"][0];
+    logger.debug("Node iterated id:%ld type:%s layout:%s",
+                 node["id"].get<int64_t>(),
+                 node["type"].get<std::string>().c_str(),
+                 node["layout"].get<std::string>().c_str());
+    if (node["focus"].empty()) {
+        return {};
+    }
+    int64_t focus_id = node["focus"][0];
     for (auto subnode : node["nodes"]) {
-        if (node["id"] != focus_id) {
+        if (subnode["id"] != focus_id) {
             continue;
         }
         auto result = find_deepest_focused_tabbed(subnode);
-        if (result.empty() and node["layout"] == "tabbed" and
-            node["nodes"].size() > 1) {
-            return node;
+        if (result != nullptr) {
+            return result;
         }
+        break;
+    }
+    std::string layout = node["layout"];
+    if (layout == "tabbed" or layout == "stacking") {
+        return node;
     }
     return {};
+}
+
+json find_deepest_focused(json node) {
+    logger.debug("Node iterated id:%ld type:%s layout:%s",
+                 node["id"].get<int64_t>(),
+                 node["type"].get<std::string>().c_str(),
+                 node["layout"].get<std::string>().c_str());
+    if (node["focus"].empty()) {
+        return node;
+    }
+    int64_t focus_id = node["focus"][0];
+    for (auto subnode : node["nodes"]) {
+        if (subnode["id"] != focus_id) {
+            continue;
+        }
+        auto result = find_deepest_focused(subnode);
+        if (result != nullptr) {
+            return result;
+        }
+        break;
+    }
+    return node;
 }
 
 tabs::Tabs available_tabs(json node) {
     node = find_deepest_focused_tabbed(node);
     json nodes = node["nodes"];
+
+    std::vector<json> leaves;
+    std::transform(nodes.begin(), nodes.end(), std::back_inserter(leaves),
+                   find_deepest_focused);
+
     std::vector<tabs::Tab> tabs;
-    std::transform(nodes.begin(), nodes.end(), std::back_inserter(tabs),
+    std::transform(leaves.begin(), leaves.end(), std::back_inserter(tabs),
                    &to<tabs::Tab>);
-    int focus_id = nodes.empty() ? static_cast<int>(node["focus"][0]) : 0;
+
+    int64_t focus_id = nodes.empty() ? 0 : node["focus"][0].get<int64_t>();
     auto it = std::find_if(
         nodes.begin(), nodes.end(),
         [focus_id](json const &subnode) { return subnode["id"] == focus_id; });

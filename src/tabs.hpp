@@ -22,6 +22,8 @@ public:
 
     Tab const *operator[](size_t index) const;
 
+    void dump() const;
+
 private:
     size_t current;
     std::vector<Tab> tabs;
