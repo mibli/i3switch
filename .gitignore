@@ -1,2 +1,3 @@
 /src/i3switch/keyboard
 build
+.build/

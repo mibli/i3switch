@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(PkgConfig)
 find_package(Threads REQUIRED)
+find_package(range-v3 REQUIRED)
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} src/*.cpp)
 include_directories(args PRIVATE ${CMAKE_SOURCE_DIR}/ext/clipp/include)
