@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
     std::string target_id;
     if (command == Command::number or tabs_direction_map.count(command)) {
         auto tabs = converters::available_tabs(root);
+        tabs.dump();
         tabs::Tab const *tab;
         if (command == Command::number) {
             tab = tabs[order];
