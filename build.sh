@@ -20,6 +20,7 @@ done
 : ${build_type="Release"}
 : ${install:=false}
 
+mkdir -p build
 pushd build
 cmake .. -DCMAKE_BUILD_TYPE="$build_type"
 make
