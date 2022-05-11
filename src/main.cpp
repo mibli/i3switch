@@ -1,12 +1,13 @@
 #include "connection/i3client.hpp"
 #include "converters.hpp"
+#include "direction"
 #include "grid.hpp"
 #include "tabs.hpp"
 #include "utils/call.hpp"
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
 
-#include <clipp.h>
+#include <docopt/docopt.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -17,34 +18,29 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <optional>
 
 #include <chrono>
 #include <thread>
 
-enum class Command {
-    help,
+char USAGE[] = R"(i3 geometric window switcher
 
-    // tabs commands
-    prev,
-    next,
-    number,
+Usage:
+  i3switch (next | prev) [wrap]                 # order movement (tabs, stacks, windows)
+  i3switch number <num>                         # order movement (tabs, stacks, windows)
+  i3switch (left | up | right | down) [wrap]    # direction movement (grid)
+  i3switch (-h | --help)                        # show this help
+)";
 
-    // grid commands
-    left,
-    up,
-    right,
-    down
-};
+std::map<std::string, Direction1d> direction_1d_map{
+    {"prev", Direction1d::PREV},
+    {"next", Direction1d::NEXT}};
 
-std::map<Command, tabs::Direction> tabs_direction_map{
-    {Command::prev, tabs::Direction::PREV},
-    {Command::next, tabs::Direction::NEXT}};
-
-std::map<Command, grid::Direction> grid_direction_map{
-    {Command::left, grid::Direction::LEFT},
-    {Command::right, grid::Direction::RIGHT},
-    {Command::up, grid::Direction::UP},
-    {Command::down, grid::Direction::DOWN}};
+std::map<std::string, Direction2d> direction_2d_map{
+    {"left", Direction2d::LEFT},
+    {"right", Direction2d::RIGHT},
+    {"up", Direction2d::UP},
+    {"down", Direction2d::DOWN}};
 
 logging::Logger logger;
 
@@ -53,45 +49,38 @@ int main(int argc, char *argv[]) {
 
     logger.configure("%s:%s()  ", __FILENAME__, __func__);
 
-    size_t order;
-
-    Command command = Command::help;
+    size_t order = 0;
     bool wrap = false;
+    std::optional<Direction2d> direction_2d;
+    std::optional<Direction1d> direction_1d;
 
-    auto args = (clipp::one_of(
-        clipp::option("-h", "--help")
-            .set(command, Command::help)
-            .doc("show this help message"),
-        clipp::one_of(
-            clipp::in_sequence(
-                clipp::one_of(clipp::required("prev")
-                                  .set(command, Command::prev)
-                                  .doc("focus previous"),
-                              clipp::required("next")
-                                  .set(command, Command::next)
-                                  .doc("focus next")),
-                clipp::option("wrap").set(wrap, true).doc("wrap tabs")),
-            clipp::in_sequence(
-                clipp::command("number").set(command, Command::number),
-                clipp::value("N", order))
-                .doc("focus tab by order, where N in [1..]"))
-            .doc("tab switching"),
-        clipp::in_sequence(
-            clipp::option("wrap").set(wrap, true).doc("wrap around edges"),
-            clipp::one_of(
-                clipp::required("left").set(command, Command::left),
-                clipp::required("up").set(command, Command::up),
-                clipp::required("right").set(command, Command::right),
-                clipp::required("down").set(command, Command::down)))));
+    {
+        auto args = docopt(argv + 1, argv + argc);
 
-    if (not clipp::parse(argc, argv, args) or command == Command::help) {
-        std::cout << clipp::make_man_page(args, argv[0]);
-        return 0;
-    }
+        // Verify args
+        if (args["number"])
+            order = atoi(args["<num>"]);
+            if (order == 0) {
+                std::cerr << "Tab order must be greater than 0";
+                return 1;
+            }
+        }
 
-    // Verify args
-    if (command == Command::number and order == 0) {
-        std::cerr << "Tab order must be greater than 0";
+        for (auto pair : direction_2d_map) {
+            if (args[pair.first]) {
+                direction_2d = pair.second;
+                break;
+            }
+        }
+
+        for (auto pair : direction_1d_map) {
+            if (args[pair.first]) {
+                direction_1d = pair.second;
+                break;
+            }
+        }
+
+        wrap = args["wrap"];
     }
 
     // Get socket directory name
@@ -104,17 +93,16 @@ int main(int argc, char *argv[]) {
     json root = json::parse(result);
 
     std::string target_id;
-    if (command == Command::number or tabs_direction_map.count(command)) {
+    if (order > 0 or direction_1d.has_value()) {
         auto tabs = converters::available_tabs(root);
         tabs.dump();
         tabs::Tab const *tab;
-        if (command == Command::number) {
+        if (order > 0) {
             tab = tabs[order];
         } else {
-            auto direction = tabs_direction_map[command];
-            tab = tabs.next(direction);
+            tab = tabs.next(direction1d);
             if (tab == nullptr and wrap) {
-                tab = tabs.first(direction);
+                tab = tabs.first(direction1d);
             }
         }
         if (tab == nullptr) {
@@ -123,13 +111,21 @@ int main(int argc, char *argv[]) {
             target_id = tab->id;
         }
     }
+    else if (direction_2d.has_value()) {
+        auto visible_nodes = json::visible_nodes(root);
+
+        if (is_floating_focused(visible_nodes)) {
+            auto windows = converters::floating(visible_nodes);
+        } else {
+            auto grid = converters::grid(visible_nodes);
+        }
+    }
     /// @todo floating windows
-    else if (grid_direction_map.count(command)) {
+    else if (grid_direction_map.count(command) > 0) {
         auto grid = converters::visible_grid(root);
-        auto direction = grid_direction_map[command];
-        grid::Window const *window = grid.next(direction);
+        grid::Window const *window = grid.next(direction1d);
         if (window == nullptr && wrap) {
-            window = grid.first(direction);
+            window = grid.first(direction1d);
         }
         if (window == nullptr) {
             logger.warning("%s", "Couldn't find a window to switch to");
