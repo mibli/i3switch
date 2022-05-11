@@ -1,6 +1,6 @@
 #pragma once
 #include "grid.hpp"
-#include "tabs.hpp"
+#include "linear.hpp"
 
 #include "utils/logging.hpp"
 
@@ -16,6 +16,6 @@ bool any_focused(std::vector<json> const &node);
 grid::Grid visible_grid(json node);
 grid::Grid visible_grid(std::vector<json> const &node);
 
-tabs::Tabs available_tabs(json node);
+linear::Sequence available_tabs(json node);
 
 }
