@@ -1,6 +1,4 @@
 #pragma once
-#include "direction.hpp"
-
 #include <string>
 #include <vector>
 
