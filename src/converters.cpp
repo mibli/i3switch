@@ -20,7 +20,7 @@ template <> tabs::Tab to<tabs::Tab>(json const &node) {
 
 } // namespace
 
-std::vector<json> find_visible_children(json node) {
+std::vector<json> visible_nodes(json node) {
     logger.debug("Node iterated id:%ld type:%s layout:%s",
                  node["id"].get<int64_t>(),
                  node["type"].get<std::string>().c_str(),
@@ -35,7 +35,7 @@ std::vector<json> find_visible_children(json node) {
     if (layout == "splith" or layout == "splitv" or layout == "output") {
         std::vector<json> result;
         for (auto subnode : node["nodes"]) {
-            auto leaves = find_visible_children(subnode);
+            auto leaves = visible_nodes(subnode);
             result.insert(result.end(), leaves.begin(), leaves.end());
         }
         return result;
@@ -43,7 +43,7 @@ std::vector<json> find_visible_children(json node) {
         int64_t focus_id = node["focus"][0];
         for (auto subnode : node["nodes"]) {
             if (subnode["id"] == focus_id) {
-                return find_visible_children(subnode);
+                return visible_nodes(subnode);
             }
         }
     } else if (layout == "dockarea") {
@@ -55,8 +55,12 @@ std::vector<json> find_visible_children(json node) {
     return {};
 }
 
-grid::Grid visible_grid(json node) {
-    auto nodes = find_visible_children(node);
+bool any_focused(const std::vector<json> &nodes) {
+    auto it = std::find_if(nodes.begin(), nodes.end(), [](const json &node){ return node["focused"]; });
+    return it != nodes.end();
+}
+
+grid::Grid visible_grid(const std::vector<json> &nodes) {
     std::vector<grid::Window> windows;
     std::transform(nodes.begin(), nodes.end(), std::back_inserter(windows),
                    &to<grid::Window>);
@@ -69,6 +73,11 @@ grid::Grid visible_grid(json node) {
     }
     size_t index = std::distance(nodes.begin(), it);
     return grid::Grid(std::move(windows), index);
+}
+
+grid::Grid visible_grid(json node) {
+    auto nodes = visible_nodes(node);
+    return visible_grid(nodes);
 }
 
 json find_deepest_focused_tabbed(json node) {

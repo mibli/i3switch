@@ -1,13 +1,13 @@
 #include "connection/i3client.hpp"
 #include "converters.hpp"
-#include "direction"
+#include "direction.hpp"
 #include "grid.hpp"
 #include "tabs.hpp"
 #include "utils/call.hpp"
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
 
-#include <docopt/docopt.h>
+#include <docopt.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -23,13 +23,23 @@
 #include <chrono>
 #include <thread>
 
-char USAGE[] = R"(i3 geometric window switcher
+constexpr char USAGE[] = R"(i3 geometric window switcher
 
 Usage:
-  i3switch (next | prev) [wrap]                 # order movement (tabs, stacks, windows)
-  i3switch number <num>                         # order movement (tabs, stacks, windows)
-  i3switch (left | up | right | down) [wrap]    # direction movement (grid)
-  i3switch (-h | --help)                        # show this help
+  i3switch (next | prev) [wrap]
+  i3switch number <num>
+  i3switch (left | up | right | down) [wrap]
+  i3switch (-h | --help)
+
+Options:
+  next          Move focus to next tab/window
+  prev          Move focus to previous tab/window
+  number <num>  Move focus to tab/window number <num>
+  right         Move focus right
+  down          Move focus down
+  left          Move focus left
+  up            Move focus up
+  -h --help     Show this help message
 )";
 
 std::map<std::string, Direction1d> direction_1d_map{
@@ -51,15 +61,15 @@ int main(int argc, char *argv[]) {
 
     size_t order = 0;
     bool wrap = false;
-    std::optional<Direction2d> direction_2d;
-    std::optional<Direction1d> direction_1d;
+    Direction2d *direction_2d = nullptr;
+    Direction1d *direction_1d = nullptr;
 
     {
-        auto args = docopt(argv + 1, argv + argc);
+        auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "0.1.0");
 
         // Verify args
-        if (args["number"])
-            order = atoi(args["<num>"]);
+        if (args["number"].asBool()) {
+            order = args["<num>"].asLong();
             if (order == 0) {
                 std::cerr << "Tab order must be greater than 0";
                 return 1;
@@ -67,20 +77,20 @@ int main(int argc, char *argv[]) {
         }
 
         for (auto pair : direction_2d_map) {
-            if (args[pair.first]) {
-                direction_2d = pair.second;
+            if (args[pair.first].asBool()) {
+                direction_2d = &pair.second;
                 break;
             }
         }
 
         for (auto pair : direction_1d_map) {
-            if (args[pair.first]) {
-                direction_1d = pair.second;
+            if (args[pair.first].asBool()) {
+                direction_1d = &pair.second;
                 break;
             }
         }
 
-        wrap = args["wrap"];
+        wrap = args["wrap"].asBool();
     }
 
     // Get socket directory name
@@ -91,18 +101,24 @@ int main(int argc, char *argv[]) {
 
     auto result = i3_client.request(i3::RequestType::GET_TREE, "");
     json root = json::parse(result);
+    auto visible_nodes = converters::visible_nodes(root);
+
+    if (converters::any_focused(visible_nodes)) {
+        logger.critical("%s", "Floating movement is not yet implemented");
+        return 1;
+    }
 
     std::string target_id;
-    if (order > 0 or direction_1d.has_value()) {
+    if (order > 0 or direction_1d) {
         auto tabs = converters::available_tabs(root);
         tabs.dump();
         tabs::Tab const *tab;
         if (order > 0) {
             tab = tabs[order];
         } else {
-            tab = tabs.next(direction1d);
+            tab = tabs.next(*direction_1d);
             if (tab == nullptr and wrap) {
-                tab = tabs.first(direction1d);
+                tab = tabs.first(*direction_1d);
             }
         }
         if (tab == nullptr) {
@@ -111,21 +127,11 @@ int main(int argc, char *argv[]) {
             target_id = tab->id;
         }
     }
-    else if (direction_2d.has_value()) {
-        auto visible_nodes = json::visible_nodes(root);
-
-        if (is_floating_focused(visible_nodes)) {
-            auto windows = converters::floating(visible_nodes);
-        } else {
-            auto grid = converters::grid(visible_nodes);
-        }
-    }
-    /// @todo floating windows
-    else if (grid_direction_map.count(command) > 0) {
-        auto grid = converters::visible_grid(root);
-        grid::Window const *window = grid.next(direction1d);
+    else if (direction_2d) {
+        auto grid = converters::visible_grid(visible_nodes);
+        grid::Window const *window = grid.next(*direction_2d, grid::MovementType::GRID_BASED);
         if (window == nullptr && wrap) {
-            window = grid.first(direction1d);
+            window = grid.first(*direction_2d, grid::MovementType::GRID_BASED);
         }
         if (window == nullptr) {
             logger.warning("%s", "Couldn't find a window to switch to");

@@ -1,4 +1,6 @@
 #pragma once
+#include "direction.hpp"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -31,20 +33,20 @@ struct Window : public Rect {
     void dump() const;
 };
 
-enum class Direction : size_t {
-    LEFT,
-    UP,
-    RIGHT,
-    DOWN,
-    COUNT
+enum class MovementType {
+    GRID_BASED,  /** Movement that looks at the sides of the window and tries
+                     to find  the closest to the border center. */
+    CENTER_BASED /** Movement that treats center of the window as the origin
+                     and destination point and tries to find next in
+                     a direction. */
 };
 
 class Grid {
   public:
     Grid(std::vector<Window> windows, size_t current);
 
-    Window const *next(Direction direction) const;
-    Window const *first(Direction direction) const;
+    Window const *next(Direction2d direction, MovementType movementType) const;
+    Window const *first(Direction2d direction, MovementType movementType) const;
 
     void dump();
 

@@ -10,10 +10,12 @@ namespace converters {
 
 using nlohmann::json;
 
-std::vector<json> find_visible_children(json node);
-grid::Grid visible_grid(json node);
+std::vector<json> visible_nodes(json node);
+bool any_focused(std::vector<json> const &node);
 
-json find_deepest_focused_tabbed(json node);
+grid::Grid visible_grid(json node);
+grid::Grid visible_grid(std::vector<json> const &node);
+
 tabs::Tabs available_tabs(json node);
 
 }
