@@ -4,7 +4,7 @@
 
 namespace linear {
 
-enum class Direction { PREV, NEXT };
+enum class Direction { PREV, NEXT, INVALID = 0xFF };
 
 class Sequence {
 public:

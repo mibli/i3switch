@@ -32,32 +32,34 @@ std::map<planar::Relation, std::map<planar::Direction, Properties>> properties{
     // DIRECTION                 NEAR                      FAR                       AXIS                      CMP NEAREST
     // ------------------------------------------------------------------------------------------------------------------------------------------
     {planar::Relation::BORDER, {
-     {planar::Direction::LEFT,  {&Rect::right,             &Rect::left,              &Rect::vertical_middle,   le, INT_MAX}},
-     {planar::Direction::UP,    {&Rect::bottom,            &Rect::top,               &Rect::horizontal_middle, le, INT_MAX}},
-     {planar::Direction::RIGHT, {&Rect::left,              &Rect::right,             &Rect::vertical_middle,   ge, INT_MIN}},
-     {planar::Direction::DOWN,  {&Rect::top,               &Rect::bottom,            &Rect::horizontal_middle, ge, INT_MIN}}}},
+     {planar::Direction::LEFT,  {&Rect::right,             &Rect::left,              &Rect::vertical_middle,   le}},
+     {planar::Direction::UP,    {&Rect::bottom,            &Rect::top,               &Rect::horizontal_middle, le}},
+     {planar::Direction::RIGHT, {&Rect::left,              &Rect::right,             &Rect::vertical_middle,   ge}},
+     {planar::Direction::DOWN,  {&Rect::top,               &Rect::bottom,            &Rect::horizontal_middle, ge}}}},
     {planar::Relation::CENTER, {
-     {planar::Direction::LEFT,  {&Rect::horizontal_middle, &Rect::horizontal_middle, &Rect::vertical_middle,   le, INT_MAX}},
-     {planar::Direction::UP,    {&Rect::vertical_middle,   &Rect::vertical_middle,   &Rect::horizontal_middle, le, INT_MAX}},
-     {planar::Direction::RIGHT, {&Rect::horizontal_middle, &Rect::horizontal_middle, &Rect::vertical_middle,   ge, INT_MIN}},
-     {planar::Direction::DOWN,  {&Rect::vertical_middle,   &Rect::vertical_middle,   &Rect::horizontal_middle, ge, INT_MIN}}}}
+     {planar::Direction::LEFT,  {&Rect::horizontal_middle, &Rect::horizontal_middle, &Rect::vertical_middle,   le}},
+     {planar::Direction::UP,    {&Rect::vertical_middle,   &Rect::vertical_middle,   &Rect::horizontal_middle, le}},
+     {planar::Direction::RIGHT, {&Rect::horizontal_middle, &Rect::horizontal_middle, &Rect::vertical_middle,   ge}},
+     {planar::Direction::DOWN,  {&Rect::vertical_middle,   &Rect::vertical_middle,   &Rect::horizontal_middle, ge}}}}
     // clang-format on
 };
 } // namespace alignment
 
 std::vector<Rect const *> closest_in_direction(std::vector<Rect const *> const &rects, int lowest, alignment::Properties const &prop) {
-    int min_pos = INT_MAX;
+    // find minimal position "greater" than lowest
+    int min_pos = prop.comp(INT_MIN, INT_MAX) ? INT_MIN : INT_MAX;
     for (auto const *rect : rects) {
-        rect->dump();
-        if (prop.comp((rect->*prop.near)(), lowest)) {
-            min_pos = std::min(min_pos, (rect->*prop.near)());
+        int near = (rect->*prop.near)();
+        if (prop.comp(near, lowest)) {
+            min_pos = prop.comp(min_pos, near) ? near : min_pos;
         }
     }
 
     // we filter out the ones that aren't among the closest
     std::vector<Rect const *> closest;
     for (auto const *rect : rects) {
-        if ((rect->*prop.near)() == min_pos) {
+        int near = (rect->*prop.near)();
+        if (near == min_pos) {
             rect->dump();
             closest.push_back(rect);
         }
@@ -76,6 +78,7 @@ std::vector<Rect const *> aligned_in_direction(std::vector<Rect const *> const &
 
     std::vector<Rect const *> closest;
     for (auto const *rect : rects) {
+        rect->dump();
         int axis = (rect->*prop.axis)();
         int distance = std::abs(value - axis);
         if (distance == min) {
@@ -94,11 +97,12 @@ Window const *next_in_direction(std::vector<Rect const *> const &rects, int curr
     // we filter out the ones that we are not interested in at all
     int extent_of_current = (rects[current]->*prop.far)();
     int middle_of_current = (rects[current]->*prop.axis)();
+    logger.debug("exent: %d, axis: %d", extent_of_current, middle_of_current);
 
     auto closest = closest_in_direction(rects, extent_of_current, prop);
-    logger.debug("closest found:%u", closest.size());
+    logger.debug("closest found: %u", closest.size());
     closest = aligned_in_direction(closest, middle_of_current, prop);
-    logger.debug("aligned found:%u", closest.size());
+    logger.debug("aligned found: %u", closest.size());
 
     return closest.empty() ? nullptr : static_cast<Window const *>(closest[0]);
 }
@@ -109,7 +113,7 @@ Window const *first_of_direction(std::vector<Rect const *> const &rects, int cur
     }
 
     // we filter out the ones that we are not interested in at all
-    int extent_of_current = prop.nearest;
+    int extent_of_current = prop.comp(INT_MIN, INT_MAX) ? INT_MAX : INT_MIN;
     int middle_of_current = (rects[current]->*prop.axis)();
 
     auto closest = closest_in_direction(rects, extent_of_current, prop);

@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
 
     size_t order = 0;
     bool wrap = false;
-    planar::Direction *direction_2d = nullptr;
-    linear::Direction *direction_1d = nullptr;
+    planar::Direction direction_2d = planar::Direction::INVALID;
+    linear::Direction direction_1d = linear::Direction::INVALID;
 
     {
         auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "0.1.0");
@@ -75,21 +75,22 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        for (auto pair : direction_2d_map) {
+        for (auto &pair : direction_2d_map) {
             if (args[pair.first].asBool()) {
-                direction_2d = &pair.second;
-                break;
+                direction_2d = pair.second;
             }
         }
 
-        for (auto pair : direction_1d_map) {
+        for (auto &pair : direction_1d_map) {
             if (args[pair.first].asBool()) {
-                direction_1d = &pair.second;
+                direction_1d = pair.second;
                 break;
             }
         }
 
         wrap = args["wrap"].asBool();
+
+        logger.debug("nr: %d, 2d: %d, 1d: %d, wrap: %d", order, static_cast<int>(direction_2d), static_cast<int>(direction_1d), wrap ? 1 : 0);
     }
 
     // Get socket directory name
@@ -104,6 +105,9 @@ int main(int argc, char *argv[]) {
     auto windows = converters::to_windows(visible_nodes);
     auto floating = converters::floating_windows(windows);
     auto tiled = converters::tiled_windows(windows);
+    for (auto window: tiled) {
+        window.log();
+    }
 
     if (converters::any_focused(floating)) {
         logger.critical("%s", "Floating movement is not yet implemented");
@@ -111,16 +115,16 @@ int main(int argc, char *argv[]) {
     }
 
     std::string target_id;
-    if (direction_1d or order > 0) {
+    if (direction_1d != linear::Direction::INVALID or order > 0) {
         auto tabs = converters::available_tabs(root);
         tabs.dump();
         std::string const *tab;
         if (order > 0) {
             tab = tabs[order];
         } else {
-            tab = tabs.next(*direction_1d);
+            tab = tabs.next(direction_1d);
             if (tab == nullptr and wrap) {
-                tab = tabs.first(*direction_1d);
+                tab = tabs.first(direction_1d);
             }
         }
         if (tab == nullptr) {
@@ -129,11 +133,11 @@ int main(int argc, char *argv[]) {
             target_id = *tab;
         }
     }
-    else if (direction_2d) {
+    else if (direction_2d != planar::Direction::INVALID) {
         auto grid = converters::visible_grid(tiled);
-        std::string const *window = grid.next(*direction_2d);
+        std::string const *window = grid.next(direction_2d);
         if (window == nullptr && wrap) {
-            window = grid.first(*direction_2d);
+            window = grid.first(direction_2d);
         }
         if (window == nullptr) {
             logger.warning("%s", "Couldn't find a window to switch to");
