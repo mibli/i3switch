@@ -8,7 +8,7 @@ namespace {
 
 template <typename Type> Type to(json const &node);
 
-template <> grid::Window to<grid::Window>(json const &node) {
+template <> planar::Window to<planar::Window>(json const &node) {
     json rect = node["rect"];
     return {{rect["x"], rect["y"], rect["width"], rect["height"]},
             std::to_string(node["id"].get<int64_t>())};
@@ -62,10 +62,10 @@ bool any_focused(const std::vector<json> &nodes) {
     return it != nodes.end();
 }
 
-grid::Grid visible_grid(const std::vector<json> &nodes) {
-    std::vector<grid::Window> windows;
+planar::Arrangement visible_grid(const std::vector<json> &nodes) {
+    std::vector<planar::Window> windows;
     std::transform(nodes.begin(), nodes.end(), std::back_inserter(windows),
-                   &to<grid::Window>);
+                   &to<planar::Window>);
     auto it = std::find_if(nodes.begin(), nodes.end(), [](json const &subnode) {
         return subnode["focused"] == true;
     });
@@ -74,10 +74,10 @@ grid::Grid visible_grid(const std::vector<json> &nodes) {
         it = nodes.begin();
     }
     size_t index = std::distance(nodes.begin(), it);
-    return grid::Grid(std::move(windows), index);
+    return planar::Arrangement(std::move(windows), index, planar::Relation::BORDER);
 }
 
-grid::Grid visible_grid(json node) {
+planar::Arrangement visible_grid(json node) {
     auto nodes = visible_nodes(node);
     return visible_grid(nodes);
 }

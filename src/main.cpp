@@ -1,7 +1,7 @@
 #include "connection/i3client.hpp"
 #include "converters.hpp"
 #include "direction.hpp"
-#include "grid.hpp"
+#include "planar.hpp"
 #include "linear.hpp"
 #include "utils/call.hpp"
 #include "utils/logging.hpp"
@@ -46,11 +46,11 @@ std::map<std::string, linear::Direction> direction_1d_map{
     {"prev", linear::Direction::PREV},
     {"next", linear::Direction::NEXT}};
 
-std::map<std::string, Direction2d> direction_2d_map{
-    {"left", Direction2d::LEFT},
-    {"right", Direction2d::RIGHT},
-    {"up", Direction2d::UP},
-    {"down", Direction2d::DOWN}};
+std::map<std::string, planar::Direction> direction_2d_map{
+    {"left", planar::Direction::LEFT},
+    {"right", planar::Direction::RIGHT},
+    {"up", planar::Direction::UP},
+    {"down", planar::Direction::DOWN}};
 
 logging::Logger logger;
 
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
     size_t order = 0;
     bool wrap = false;
-    Direction2d *direction_2d = nullptr;
+    planar::Direction *direction_2d = nullptr;
     linear::Direction *direction_1d = nullptr;
 
     {
@@ -129,14 +129,14 @@ int main(int argc, char *argv[]) {
     }
     else if (direction_2d) {
         auto grid = converters::visible_grid(visible_nodes);
-        grid::Window const *window = grid.next(*direction_2d, grid::MovementType::GRID_BASED);
+        std::string const *window = grid.next(*direction_2d);
         if (window == nullptr && wrap) {
-            window = grid.first(*direction_2d, grid::MovementType::GRID_BASED);
+            window = grid.first(*direction_2d);
         }
         if (window == nullptr) {
             logger.warning("%s", "Couldn't find a window to switch to");
         } else {
-            target_id = window->id;
+            target_id = *window;
             logger.info("id:%s", target_id.c_str());
         }
     }
