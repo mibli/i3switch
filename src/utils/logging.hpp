@@ -14,7 +14,7 @@ namespace logging {
         ERROR,
         WARNING,
         INFO,
-        DEBUG,
+        DEBUGGING,
         LEVELS_COUNT
     };
 
@@ -60,7 +60,7 @@ namespace logging {
 
     template<typename... Args>
     void debug(char const *format, Args ... args) {
-        logging::log<Args ...>(DEBUG, format, args...);
+        logging::log<Args ...>(DEBUGGING, format, args...);
     }
 
     class Logger
@@ -121,7 +121,7 @@ namespace logging {
         inline void debug(char const *format, Args...args)
         {
 #ifdef DEBUG
-            this->log<Args...>(DEBUG, format, args...);
+            this->log<Args...>(DEBUGGING, format, args...);
 #endif
         }
     };

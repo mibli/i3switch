@@ -15,6 +15,10 @@ struct Window {
     int x, y, w, h;
     bool focused;
     bool floating;
+    void log() {
+        printf("<%s %dx%d+%d+%d %s>%s\n", id.c_str(), w, h, x, y,
+               floating ? "floating" : "tiled", focused ? "*" : "");
+    }
 };
 
 std::vector<json> visible_nodes(json node);

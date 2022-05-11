@@ -5,7 +5,7 @@
 
 namespace planar {
 
-enum class Direction { LEFT, UP, RIGHT, DOWN };
+enum class Direction { LEFT, UP, RIGHT, DOWN, INVALID = 0xFF };
 
 struct Rect {
     int bottom() const;
