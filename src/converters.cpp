@@ -14,8 +14,8 @@ template <> grid::Window to<grid::Window>(json const &node) {
             std::to_string(node["id"].get<int64_t>())};
 }
 
-template <> tabs::Tab to<tabs::Tab>(json const &node) {
-    return {std::to_string(node["id"].get<int64_t>())};
+template <> std::string to<std::string>(json const &node) {
+    return std::to_string(node["id"].get<int64_t>());
 }
 
 } // namespace
@@ -34,14 +34,16 @@ std::vector<json> visible_nodes(json node) {
     std::string layout = node["layout"];
     if (layout == "splith" or layout == "splitv" or layout == "output") {
         std::vector<json> result;
-        for (auto subnode : node["nodes"]) {
+        auto &floating_nodes = node["floating_nodes"];
+        result.insert(result.end(), floating_nodes.begin(), floating_nodes.end());
+        for (auto &subnode : node["nodes"]) {
             auto leaves = visible_nodes(subnode);
             result.insert(result.end(), leaves.begin(), leaves.end());
         }
         return result;
     } else if (layout == "tabbed" or layout == "stacking") {
         int64_t focus_id = node["focus"][0];
-        for (auto subnode : node["nodes"]) {
+        for (auto &subnode : node["nodes"]) {
             if (subnode["id"] == focus_id) {
                 return visible_nodes(subnode);
             }
@@ -128,7 +130,7 @@ json find_deepest_focused(json node) {
     return node;
 }
 
-tabs::Tabs available_tabs(json node) {
+linear::Sequence available_tabs(json node) {
     node = find_deepest_focused_tabbed(node);
     json nodes = node["nodes"];
 
@@ -136,9 +138,9 @@ tabs::Tabs available_tabs(json node) {
     std::transform(nodes.begin(), nodes.end(), std::back_inserter(leaves),
                    find_deepest_focused);
 
-    std::vector<tabs::Tab> tabs;
+    std::vector<std::string> tabs;
     std::transform(leaves.begin(), leaves.end(), std::back_inserter(tabs),
-                   &to<tabs::Tab>);
+                   &to<std::string>);
 
     int64_t focus_id = nodes.empty() ? 0 : node["focus"][0].get<int64_t>();
     auto it = std::find_if(

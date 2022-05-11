@@ -2,7 +2,7 @@
 #include "converters.hpp"
 #include "direction.hpp"
 #include "grid.hpp"
-#include "tabs.hpp"
+#include "linear.hpp"
 #include "utils/call.hpp"
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
@@ -42,9 +42,9 @@ Options:
   -h --help     Show this help message
 )";
 
-std::map<std::string, Direction1d> direction_1d_map{
-    {"prev", Direction1d::PREV},
-    {"next", Direction1d::NEXT}};
+std::map<std::string, linear::Direction> direction_1d_map{
+    {"prev", linear::Direction::PREV},
+    {"next", linear::Direction::NEXT}};
 
 std::map<std::string, Direction2d> direction_2d_map{
     {"left", Direction2d::LEFT},
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     size_t order = 0;
     bool wrap = false;
     Direction2d *direction_2d = nullptr;
-    Direction1d *direction_1d = nullptr;
+    linear::Direction *direction_1d = nullptr;
 
     {
         auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "0.1.0");
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     if (order > 0 or direction_1d) {
         auto tabs = converters::available_tabs(root);
         tabs.dump();
-        tabs::Tab const *tab;
+        std::string const *tab;
         if (order > 0) {
             tab = tabs[order];
         } else {
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
         if (tab == nullptr) {
             logger.critical("%s", "Can't switch to tab, tab not found");
         } else {
-            target_id = tab->id;
+            target_id = *tab;
         }
     }
     else if (direction_2d) {
