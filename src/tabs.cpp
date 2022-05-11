@@ -8,16 +8,16 @@ namespace tabs {
 Tabs::Tabs(std::vector<Tab> const &ids, size_t current)
     : tabs(ids), current(current) {}
 
-Tab const *Tabs::next(Direction direction) const {
-    int delta = direction == Direction::PREV ? -1 : +1;
+Tab const *Tabs::next(Direction1d direction) const {
+    int delta = direction == Direction1d::PREV ? -1 : +1;
     return (0 <= current + delta && current + delta < tabs.size())
                ? &tabs[current + delta]
                : nullptr;
 }
 
-Tab const *Tabs::first(Direction direction) const {
+Tab const *Tabs::first(Direction1d direction) const {
     if (0 < tabs.size()) {
-        return direction == Direction::PREV ? &tabs[tabs.size() - 1] : &tabs[0];
+        return direction == Direction1d::PREV ? &tabs[tabs.size() - 1] : &tabs[0];
     }
     return nullptr;
 }

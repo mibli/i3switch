@@ -120,7 +120,9 @@ namespace logging {
         template<typename ...Args>
         inline void debug(char const *format, Args...args)
         {
+#ifdef DEBUG
             this->log<Args...>(DEBUG, format, args...);
+#endif
         }
     };
 }
