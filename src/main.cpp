@@ -1,6 +1,5 @@
 #include "connection/i3client.hpp"
 #include "converters.hpp"
-#include "direction.hpp"
 #include "planar.hpp"
 #include "linear.hpp"
 #include "utils/call.hpp"
