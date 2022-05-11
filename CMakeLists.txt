@@ -18,5 +18,6 @@ include_directories(${DOCOPT_INCLUDE_DIRS})
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${DOCOPT_LIBRARIES})
+target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -g -gstabs)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

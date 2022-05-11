@@ -101,14 +101,17 @@ int main(int argc, char *argv[]) {
     auto result = i3_client.request(i3::RequestType::GET_TREE, "");
     json root = json::parse(result);
     auto visible_nodes = converters::visible_nodes(root);
+    auto windows = converters::to_windows(visible_nodes);
+    auto floating = converters::floating_windows(windows);
+    auto tiled = converters::tiled_windows(windows);
 
-    if (converters::any_focused(visible_nodes)) {
+    if (converters::any_focused(floating)) {
         logger.critical("%s", "Floating movement is not yet implemented");
         return 1;
     }
 
     std::string target_id;
-    if (order > 0 or direction_1d) {
+    if (direction_1d or order > 0) {
         auto tabs = converters::available_tabs(root);
         tabs.dump();
         std::string const *tab;
@@ -127,7 +130,7 @@ int main(int argc, char *argv[]) {
         }
     }
     else if (direction_2d) {
-        auto grid = converters::visible_grid(visible_nodes);
+        auto grid = converters::visible_grid(tiled);
         std::string const *window = grid.next(*direction_2d);
         if (window == nullptr && wrap) {
             window = grid.first(*direction_2d);
