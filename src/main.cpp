@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     linear::Direction direction_1d = linear::Direction::INVALID;
 
     {
-        auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "0.1.0");
+        auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "1.1.0");
 
         // Verify args
         if (args["number"].asBool()) {
