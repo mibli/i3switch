@@ -35,46 +35,56 @@ The movement now can be separated into tab, and directional movement:
 ![Good tab focus example](docs/img/focus_direction_tab_next_good.svg)
 ![Good tab focus next example](docs/img/focus_direction_tab_good.svg)
 
+#### Visual space movement
+
+Problem with i3 directional movement is that it acknowledges focus history
+and containers over focus direction. It of course has it's pros, but often I
+expect the focus to move in the direction in relation to the current
+container.
+
+Example of bad behaviour without i3switch:
+
+![Bad directional switching](docs/img/focus_direction_bad.svg)
+
+And here's a solution to the problem.
+
+![Good directional switching](docs/img/focus_direction_good.svg)
+
 ### Current Features
 
-* switch to nth tab of closest ancestor tabbed container
+* switch to nth tab/stack of closest ancestor tabbed container
 
       i3switch number N
 
-* switch to next/previous tab
+* switch to next/previous tab/stack
 
       i3switch (left|right) [wrap]
 
-  * tab wrapping
+  * tab/stack wrapping
 
-    ![Focus tab wrap](docs/img/focus_direction_tab_wrap_good.svg)
-
-### Planned features
-
-* stacks support
-
-      i3switch stack next # switch to next stack element
-      i3switch stack 2    # switch to 2nd stack element
-      i3switch any 3      # switch to 3rd tab or stack element
-
+    ![Focus tab/stack wrap](docs/img/focus_direction_tab_wrap_good.svg)
 
 * visual space focus movement
 
-  Problem with i3 directional movement is that it acknowledges focus history
-  and containers over focus direction. It of course has it's pros, but often I
-  expect the focus to move in the direction in relation to the current
-  container.
+      i3switch (left | up | right | down) [wrap]
 
-  Example of bad behaviour:
+### Planned features
 
-  ![Bad directional switching](docs/img/focus_direction_bad.svg)
+* Floating windows switching
 
-  Let's have an option to resolve it:
+  * Directional switching
 
-  ![Good directional switching](docs/img/focus_direction_good.svg)
+    Switch windows basing on their middle point, potentially with a flag to include tiled windows
+
+  * Linear switching
+
+    Switch windows like i3 switches them by default
 
 ### Building
 
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    make -C build
+    # or alternatively
     ./build.sh release
 
 ### Installation
@@ -85,3 +95,4 @@ The movement now can be separated into tab, and directional movement:
 
 * i3
 * nlohmann/json
+* depopt
