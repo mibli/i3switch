@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install i3-wm
+      run: sudo apt install -y i3-wm
     - name: Install docopt
       run: sudo apt install -y libdocopt0 libdocopt-dev
     - name: Install nlohmann JSON
