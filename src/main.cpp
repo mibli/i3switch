@@ -105,40 +105,44 @@ int main(int argc, char *argv[]) {
     auto windows = converters::to_windows(visible_nodes);
     auto floating = converters::floating(windows);
     auto tiled = converters::tiled(windows);
-    for (auto window: tiled) {
-        window.log();
-    }
-
-    if (converters::any_focused(floating)) {
-        logger.critical("%s", "Floating movement is not yet implemented");
-        return 1;
-    }
 
     std::string target_id;
     if (direction_1d != linear::Direction::INVALID or order > 0) {
-        auto windows = converters::available_tabs(root);
-        auto tabs = converters::as_sequence(converters::to_windows(windows));
-        tabs.dump();
-        std::string const *tab;
-        if (order > 0) {
-            tab = tabs[order];
+        linear::Sequence seq;
+        if (converters::any_focused(floating)) {
+            seq = converters::as_sequence(floating);
         } else {
-            tab = tabs.next(direction_1d);
-            if (tab == nullptr and wrap) {
-                tab = tabs.first(direction_1d);
+            auto nodes = converters::available_tabs(root);
+            auto windows = converters::to_windows(nodes);
+            seq = converters::as_sequence(windows);
+        }
+        seq.dump();
+        std::string const *window;
+        if (order > 0) {
+            window = seq[order];
+        } else {
+            window = seq.next(direction_1d);
+            if (window == nullptr and wrap) {
+                window = seq.first(direction_1d);
             }
         }
-        if (tab == nullptr) {
-            logger.critical("%s", "Can't switch to tab, tab not found");
+        if (window == nullptr) {
+            logger.critical("%s", "Can't switch to window, sequence not found");
         } else {
-            target_id = *tab;
+            target_id = *window;
         }
     }
     else if (direction_2d != planar::Direction::INVALID) {
-        auto grid = converters::as_arrangement(tiled, planar::Relation::BORDER);
-        std::string const *window = grid.next(direction_2d);
+        planar::Arrangement arng;
+        if (converters::any_focused(floating)) {
+            logger.warning("%s", "Floating switching is misbehaving right now!");
+            arng = converters::as_arrangement(floating, planar::Relation::CENTER);
+        } else {
+            arng = converters::as_arrangement(tiled, planar::Relation::BORDER);
+        }
+        std::string const *window = arng.next(direction_2d);
         if (window == nullptr && wrap) {
-            window = grid.first(direction_2d);
+            window = arng.first(direction_2d);
         }
         if (window == nullptr) {
             logger.warning("%s", "Couldn't find a window to switch to");
