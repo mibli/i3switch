@@ -1,77 +1,96 @@
+#include "connection/i3client.hpp"
+#include "converters.hpp"
+#include "planar.hpp"
+#include "linear.hpp"
+#include "utils/call.hpp"
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
-#include "utils/call.hpp"
-#include "connection/i3client.hpp"
-#include "i3tree.hpp"
 
+#include <docopt.h>
 #include <nlohmann/json.hpp>
-#include <clipp.h>
 
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <cstdio>
-#include <thread>
-#include <vector>
 #include <algorithm>
 #include <climits>
-
+#include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <thread>
+#include <vector>
+#include <optional>
+
 #include <chrono>
+#include <thread>
 
+constexpr char USAGE[] = R"(i3 geometric window switcher
 
-int main(int argc, char *argv [])
-{
+Usage:
+  i3switch (next | prev) [wrap]
+  i3switch number <num>
+  i3switch (left | up | right | down) [wrap]
+  i3switch (-h | --help)
+
+Options:
+  next          Move focus to next tab/window
+  prev          Move focus to previous tab/window
+  number <num>  Move focus to tab/window number <num>
+  right         Move focus right
+  down          Move focus down
+  left          Move focus left
+  up            Move focus up
+  -h --help     Show this help message
+)";
+
+std::map<std::string, linear::Direction> direction_1d_map{
+    {"prev", linear::Direction::PREV},
+    {"next", linear::Direction::NEXT}};
+
+std::map<std::string, planar::Direction> direction_2d_map{
+    {"left", planar::Direction::LEFT},
+    {"right", planar::Direction::RIGHT},
+    {"up", planar::Direction::UP},
+    {"down", planar::Direction::DOWN}};
+
+logging::Logger logger;
+
+int main(int argc, char *argv[]) {
     using nlohmann::json;
 
-    logging::Logger log;
-    log.configure("%s:%s()  ", __FILENAME__, __func__);
+    logger.configure("%s:%s()  ", __FILENAME__, __func__);
 
-    size_t order;
-
-    enum class Command {help, prev, next, number, left, up, right, down};
-    Command command = Command::help;
+    size_t order = 0;
     bool wrap = false;
+    planar::Direction direction_2d = planar::Direction::INVALID;
+    linear::Direction direction_1d = linear::Direction::INVALID;
 
-    auto args = (
-        clipp::one_of(
-            clipp::option("-h", "--help").set(command, Command::help)
-                .doc("show this help message"),
-            clipp::one_of(
-                clipp::in_sequence(
-                    clipp::one_of(
-                        clipp::required("prev").set(command, Command::prev)
-                            .doc("focus previous"),
-                        clipp::required("next").set(command, Command::next)
-                            .doc("focus next")
-                    ),
-                    clipp::option("wrap").set(wrap, true)
-                        .doc("wrap tabs")
-                ),
-                clipp::in_sequence(
-                    clipp::command("number").set(command, Command::number),
-                    clipp::value("N", order)
-                ).doc("focus tab by order, where N in [1..]")
-            ).doc("tab switching"),
-            clipp::one_of(
-                clipp::required("left").set(command, Command::left),
-                clipp::required("up").set(command, Command::up),
-                clipp::required("right").set(command, Command::right),
-                clipp::required("down").set(command, Command::down)
-            )
-        )
-    );
-
-    if (not clipp::parse(argc, argv, args) or command == Command::help)
     {
-        std::cout << clipp::make_man_page(args, argv[0]);
-        return 0;
-    }
+        auto args = docopt::docopt(std::string(USAGE), std::vector<std::string>(argv + 1, argv + argc), true, "1.1.0");
 
-    // Verify args
-    if (command == Command::number and order == 0)
-    {
-        std::cerr << "Tab order must be greater than 0";
+        // Verify args
+        if (args["number"].asBool()) {
+            order = args["<num>"].asLong();
+            if (order == 0) {
+                std::cerr << "Tab order must be greater than 0";
+                return 1;
+            }
+        }
+
+        for (auto &pair : direction_2d_map) {
+            if (args[pair.first].asBool()) {
+                direction_2d = pair.second;
+            }
+        }
+
+        for (auto &pair : direction_1d_map) {
+            if (args[pair.first].asBool()) {
+                direction_1d = pair.second;
+                break;
+            }
+        }
+
+        wrap = args["wrap"].asBool();
+
+        logger.debug("nr: %d, 2d: %d, 1d: %d, wrap: %d", order, static_cast<int>(direction_2d), static_cast<int>(direction_1d), wrap ? 1 : 0);
     }
 
     // Get socket directory name
@@ -81,143 +100,62 @@ int main(int argc, char *argv [])
     i3::Client i3_client(i3_socket_path);
 
     auto result = i3_client.request(i3::RequestType::GET_TREE, "");
-    i3::Tree tree (json::parse(result));
-
-    json current = tree.get_focused_child(tree.root);
-    json parent = tree.find_tabbed(current);
-    json target;
-
-    if (command == Command::number)
-    {
-        // switch to tab number
-        json nodes = parent["nodes"];
-        if (order > nodes.size())
-            log.critical("No tab number %d (only %d tabs)", order, nodes.size());
-
-        target = nodes[order - 1];
-        target = i3::Tree::get_focused_child(target);
+    json root = json::parse(result);
+    auto visible_nodes = converters::visible_nodes(root);
+    auto windows = converters::to_windows(visible_nodes);
+    auto floating = converters::floating_windows(windows);
+    auto tiled = converters::tiled_windows(windows);
+    for (auto window: tiled) {
+        window.log();
     }
-    else if (command == Command::prev or command == Command::next)
-    {
-        if (command == Command::prev)
-            target = i3::Tree::get_delta_child(parent, -1, wrap);
-        else
-            target = i3::Tree::get_delta_child(parent, +1, wrap);
 
-        if (target == nullptr)
-            log.critical("%s", "Can't switch to tab, tab not found");
-
-        target = i3::Tree::get_focused_child(target);
+    if (converters::any_focused(floating)) {
+        logger.critical("%s", "Floating movement is not yet implemented");
+        return 1;
     }
-    else if (command == Command::left or command == Command::up or
-             command == Command::right or command == Command::down)
-    {
-        //TODO: clean it up!
-        int middle;
-        int delta;
-        char const *fst_layout;
-        char const *snd_layout;
-        std::function<bool(json const &, const char *)> matches_layout =
-            [](json const &node, const char *layout) {
-                return node["layout"] == layout and not node["nodes"].empty();
-            };
-        std::function<int(json const &)> get_middle;
-        std::function<json(json const &)> edgest;
 
-        if (command == Command::left or command == Command::up)
-            edgest = [](json const &node) {
-                return node["nodes"].back();
-            };
-        else
-            edgest = [](json const &node) {
-                return node["nodes"].front();
-            };
-
-        if (command == Command::left or command == Command::right)
-        {
-            get_middle = [](json const &node) {
-                json const &rect = node["rect"];
-                return rect["y"].get<int>() + (rect["height"].get<int>() / 2);
-            };
-            middle = get_middle(current);
-            delta = command == Command::left ? -1 : +1;
-            fst_layout = "splith";
-            snd_layout = "splitv";
+    std::string target_id;
+    if (direction_1d != linear::Direction::INVALID or order > 0) {
+        auto tabs = converters::available_tabs(root);
+        tabs.dump();
+        std::string const *tab;
+        if (order > 0) {
+            tab = tabs[order];
+        } else {
+            tab = tabs.next(direction_1d);
+            if (tab == nullptr and wrap) {
+                tab = tabs.first(direction_1d);
+            }
         }
-        else
-        {
-            get_middle = [](json const &node) {
-                json const &rect = node["rect"];
-                return rect["x"].get<int>() + (rect["width"].get<int>() / 2);
-            };
-            middle = get_middle(current);
-            delta = command == Command::up ? -1 : +1;
-            fst_layout = "splitv";
-            snd_layout = "splith";
-        }
-
-        std::function<bool(json const &)> can_switch =
-            [&matches_layout, &delta, &fst_layout](json const &node) {
-                return matches_layout(node, fst_layout) and
-                       i3::Tree::get_delta_child(node, delta, false) != nullptr;
-            };
-        std::function<json(json const &)> middlest =
-            [&get_middle, middle](json const &parent) {
-                json best = nullptr;
-                int best_delta = INT_MAX;
-                for (auto const &node : parent["nodes"]) {
-                    int node_delta = std::abs(middle - get_middle(node));
-                    if (node_delta < best_delta) {
-                        best = node;
-                        best_delta = node_delta;
-                    }
-                }
-                return best;
-            };
-
-        target = tree.find_matching_parent(current, can_switch);
-        target = i3::Tree::get_delta_child(target, delta, false);
-
-        while (target != nullptr)
-        {
-            if (matches_layout(target, fst_layout))
-            {
-                target = edgest(target);
-            }
-            else if (matches_layout(target, snd_layout))
-            {
-                target = middlest(target);
-            }
-            else if (not target["nodes"].empty())
-            {
-                target = tree.get_focused_child(target, 1);
-            }
-            else
-                break;
+        if (tab == nullptr) {
+            logger.critical("%s", "Can't switch to tab, tab not found");
+        } else {
+            target_id = *tab;
         }
     }
-    //else if (left or up or right or down)
-    //{
-    //    // OLD APPROACH
-    //    // lookup slpith layouts until theres one with a node in the
-    //    // requested direction in relation to the focused one,
-    //    // otherwise wrap on the closest one
-    //    //
-    //    // NEW APPROACH
-    //    // same except instead of taking "focus" into account, try to
-    //    // match positions to the cursor.
-    //    //
-    //    // if (left)
-    //    // if (right)
-    //    // if (up)
-    //    // if (down)
-    //}
+    else if (direction_2d != planar::Direction::INVALID) {
+        auto grid = converters::visible_grid(tiled);
+        std::string const *window = grid.next(direction_2d);
+        if (window == nullptr && wrap) {
+            window = grid.first(direction_2d);
+        }
+        if (window == nullptr) {
+            logger.warning("%s", "Couldn't find a window to switch to");
+        } else {
+            target_id = *window;
+            logger.info("id:%s", target_id.c_str());
+        }
+    }
 
-    uint64_t target_id = target["id"].get<uint64_t>();
-    std::string request = stringf("[con_id=%ld] focus", target_id);
-    log.info("request: %s", request.c_str());
+    if (target_id.empty()) {
+        logger.critical("%s", "Failed to find window to switch to");
+        return 1;
+    }
+
+    std::string request = stringf("[con_id=%s] focus", target_id.c_str());
+    logger.info("request: %s", request.c_str());
     auto reply = i3_client.request(i3::RequestType::RUN_COMMAND, request);
-    log.info("response: %s", reply.c_str());
+    logger.info("response: %s", reply.c_str());
 
     return 0;
 }

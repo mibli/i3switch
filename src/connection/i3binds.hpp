@@ -1,11 +1,12 @@
 #pragma once
 
 #include <i3/ipc.h>
+#include <cstddef>
 
 namespace i3
 {
 
-enum class RequestType {
+enum class RequestType : size_t {
     RUN_COMMAND = I3_IPC_MESSAGE_TYPE_RUN_COMMAND,
     GET_WORKSPACES = I3_IPC_MESSAGE_TYPE_GET_WORKSPACES,
     SUBSCRIBE = I3_IPC_MESSAGE_TYPE_SUBSCRIBE,
@@ -19,7 +20,7 @@ enum class RequestType {
     SEND_TICK = I3_IPC_MESSAGE_TYPE_SEND_TICK
 };
 
-enum class ReturnType {
+enum class ReturnType : size_t {
     COMMAND = I3_IPC_REPLY_TYPE_COMMAND,
     WORKSPACES = I3_IPC_REPLY_TYPE_WORKSPACES,
     SUBSCRIBE = I3_IPC_REPLY_TYPE_SUBSCRIBE,
@@ -33,7 +34,7 @@ enum class ReturnType {
     TICK = I3_IPC_REPLY_TYPE_TICK
 };
 
-enum class EventType {
+enum class EventType : size_t {
     WORKSPACE = I3_IPC_EVENT_WORKSPACE,
     OUTPUT = I3_IPC_EVENT_OUTPUT,
     MODE = I3_IPC_EVENT_MODE,
