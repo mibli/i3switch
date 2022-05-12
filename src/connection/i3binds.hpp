@@ -1,6 +1,8 @@
 #pragma once
 
+extern "C" {
 #include <i3/ipc.h>
+}
 #include <cstddef>
 
 namespace i3
