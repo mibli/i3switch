@@ -21,14 +21,17 @@ struct Window {
     }
 };
 
+using Windows = std::vector<Window>;
+
 std::vector<json> visible_nodes(json node);
-std::vector<Window> to_windows(std::vector<json> const &node);
-std::vector<Window> floating_windows(std::vector<Window> const &windows);
-std::vector<Window> tiled_windows(std::vector<Window> const &windows);
+std::vector<json> available_tabs(json node);
+
+Windows floating(Windows const &windows);
+Windows tiled(Windows const &windows);
 bool any_focused(std::vector<Window> const &windows);
 
-planar::Arrangement visible_grid(std::vector<Window> const &windows);
-
-linear::Sequence available_tabs(json node);
+Windows to_windows(std::vector<json> const &node);
+planar::Arrangement as_arrangement(Windows const &windows, planar::Relation relation);
+linear::Sequence as_sequence(Windows const &windows);
 
 }

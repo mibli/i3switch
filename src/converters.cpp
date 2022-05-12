@@ -6,20 +6,33 @@ extern logging::Logger logger;
 namespace converters {
 namespace {
 
-std::string getId(json node) {
+std::string get_id(json node) {
     return std::to_string(node["id"].get<int64_t>());
 }
 
-Window toWindow(json const &node) {
+Window to_window(json const &node) {
     json const &rect = node["rect"];
     bool floating = node["type"] == "floating_con";
     bool focused = floating ? node["nodes"][0]["focused"] : node["focused"];
-    std::string id = floating ? getId(node["nodes"][0]) : getId(node);
+    std::string id = floating ? get_id(node["nodes"][0]) : get_id(node);
     return {id, rect["x"], rect["y"], rect["width"], rect["height"], focused, floating};
 }
 
-planar::Window toPlanar(Window const &window) {
+planar::Window to_planar(Window const &window) {
     return {{window.x, window.y, window.w, window.h}, window.id};
+}
+
+bool is_focused(Window const &window) {
+    return window.focused;
+}
+
+size_t focused_index(Windows const &windows) {
+    auto it = std::find_if(windows.begin(), windows.end(), is_focused);
+    if (it == windows.end()) {
+        logger.warning("No focused node found out of %lu", windows.size());
+        return 0; // we have to focus SOMETHING
+    }
+    return std::distance(windows.begin(), it);
 }
 
 } // namespace
@@ -67,53 +80,14 @@ std::vector<json> visible_nodes(json node) {
     } else if (layout == "dockarea") {
         return {};
     } else {
-        logger.critical("Unsupported layout:%s found for id: %d",
-                        layout.c_str(), getId(node));
+        logger.critical("Unsupported layout:%s found for id: %s", layout.c_str(), get_id(node).c_str());
     }
     return {};
 }
 
-std::vector<Window> to_windows(std::vector<json> const &nodes) {
-    std::vector<Window> windows;
-    std::transform(nodes.begin(), nodes.end(), std::back_inserter(windows), &toWindow);
-    return windows;
-}
-
-std::vector<Window> floating_windows(std::vector<Window> const &windows) {
-    std::vector<Window> result;
-    std::copy_if(windows.begin(), windows.end(), std::back_inserter(result),
-                 [](Window const &window) { return window.floating; });
-    return result;
-}
-
-std::vector<Window> tiled_windows(std::vector<Window> const &windows) {
-    std::vector<Window> result;
-    std::copy_if(windows.begin(), windows.end(), std::back_inserter(result),
-                 [](Window const &window) { return not window.floating; });
-    return result;
-}
-
-bool any_focused(const std::vector<Window> &windows) {
-    auto it = std::find_if(windows.begin(), windows.end(), [](const Window &window){ return window.focused; });
-    return it != windows.end();
-}
-
-planar::Arrangement visible_grid(const std::vector<Window> &nodes) {
-    std::vector<planar::Window> windows;
-    std::transform(nodes.begin(), nodes.end(), std::back_inserter(windows),
-                   &toPlanar);
-    auto it = std::find_if(nodes.begin(), nodes.end(), [](Window const &window) { return window.focused; });
-    if (it == nodes.end()) {
-        logger.warning("No focused node found out of %lu", nodes.size());
-        it = nodes.begin();
-    }
-    size_t index = std::distance(nodes.begin(), it);
-    return planar::Arrangement(std::move(windows), index, planar::Relation::BORDER);
-}
-
 json find_deepest_focused_tabbed(json node) {
     logger.debug("Node iterated id:%s type:%s layout:%s",
-                 getId(node).c_str(),
+                 get_id(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
     auto focused = focused_subnode(node);
@@ -133,7 +107,7 @@ json find_deepest_focused_tabbed(json node) {
 
 json find_deepest_focused(json node) {
     logger.debug("Node iterated id:%s type:%s layout:%s",
-                 getId(node).c_str(),
+                 get_id(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
     auto focused = focused_subnode(node);
@@ -147,28 +121,62 @@ json find_deepest_focused(json node) {
     return focused;
 }
 
-linear::Sequence available_tabs(json node) {
+std::vector<json> available_tabs(json node) {
     node = find_deepest_focused_tabbed(node);
     if (node == nullptr) {
-        return {{},0};
+        return {};
     }
     json nodes = node["nodes"];
     if (nodes == nullptr or nodes.empty()) {
-        return {{},0};
+        return {};
     }
 
     std::vector<json> leaves;
     std::transform(nodes.begin(), nodes.end(), std::back_inserter(leaves),
                    find_deepest_focused);
+    return leaves;
+}
 
-    std::vector<std::string> tabs;
-    std::transform(leaves.begin(), leaves.end(), std::back_inserter(tabs), &getId);
 
-    int64_t focus_id = node["focus"][0].get<int64_t>();
-    auto it = std::find_if(nodes.begin(), nodes.end(),
-                           [focus_id](json const &node) { return node["id"] == focus_id; });
-    size_t index = std::distance(nodes.begin(), it);
-    return {tabs, index};
+Windows floating(Windows const &windows) {
+    static auto is_floating = [](Window const &window){ return window.floating; };
+    std::vector<Window> result;
+    std::copy_if(windows.begin(), windows.end(), std::back_inserter(result), is_floating);
+    return result;
+}
+
+Windows tiled(Windows const &windows) {
+    static auto is_tiled = [](Window const &window){ return not window.floating; };
+    std::vector<Window> result;
+    std::copy_if(windows.begin(), windows.end(), std::back_inserter(result), is_tiled);
+    return result;
+}
+
+bool any_focused(const std::vector<Window> &windows) {
+    static auto is_focused = [](Window const &window){ return window.focused; };
+    auto it = std::find_if(windows.begin(), windows.end(), is_focused);
+    return it != windows.end();
+}
+
+Windows to_windows(std::vector<json> const &nodes) {
+    std::vector<Window> windows;
+    std::transform(nodes.begin(), nodes.end(), std::back_inserter(windows), &to_window);
+    return windows;
+}
+
+planar::Arrangement as_arrangement(const Windows &windows, planar::Relation relation) {
+    size_t index = focused_index(windows);
+    std::vector<planar::Window> items;
+    std::transform(windows.begin(), windows.end(), std::back_inserter(items), &to_planar);
+    return planar::Arrangement(std::move(items), index, planar::Relation::BORDER);
+}
+
+linear::Sequence as_sequence(const Windows &windows) {
+    static auto get_id = [](Window const &window) { return window.id; };
+    size_t index = focused_index(windows);
+    std::vector<std::string> items;
+    std::transform(windows.begin(), windows.end(), std::back_inserter(items), get_id);
+    return linear::Sequence(std::move(items), index);
 }
 
 } // namespace converters
