@@ -24,6 +24,20 @@ planar::Window toPlanar(Window const &window) {
 
 } // namespace
 
+json focused_subnode(json &node) {
+    auto &focus = node["focus"];
+    if (focus == nullptr or focus.empty()) {
+        return nullptr;
+    }
+    int64_t focus_id = focus[0];
+    auto &nodes = node["nodes"];
+    auto it = std::find_if(nodes.begin(), nodes.end(), [focus_id](json const &node) { return node["id"] == focus_id; });
+    if (it == nodes.end()) {
+        return nullptr;
+    }
+    return *it;
+}
+
 std::vector<json> visible_nodes(json node) {
     logger.debug("Node iterated id:%ld type:%s layout:%s",
                  node["id"].get<int64_t>(),
@@ -45,12 +59,10 @@ std::vector<json> visible_nodes(json node) {
             result.insert(result.end(), leaves.begin(), leaves.end());
         }
         return result;
-    } else if (layout == "tabbed" or layout == "stacking") {
-        int64_t focus_id = node["focus"][0];
-        for (auto &subnode : node["nodes"]) {
-            if (subnode["id"] == focus_id) {
-                return visible_nodes(subnode);
-            }
+    } else if (layout == "tabbed" or layout == "stacked") {
+        auto focused = focused_subnode(node);
+        if (focused != nullptr) {
+            return visible_nodes(focused);
         }
     } else if (layout == "dockarea") {
         return {};
@@ -104,22 +116,16 @@ json find_deepest_focused_tabbed(json node) {
                  getId(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
-    if (node["focus"].empty()) {
+    auto focused = focused_subnode(node);
+    if (focused == nullptr) {
         return {};
     }
-    int64_t focus_id = node["focus"][0];
-    for (auto subnode : node["nodes"]) {
-        if (subnode["id"] != focus_id) {
-            continue;
-        }
-        auto result = find_deepest_focused_tabbed(subnode);
-        if (result != nullptr) {
-            return result;
-        }
-        break;
+    auto result = find_deepest_focused_tabbed(focused);
+    if (result != nullptr) {
+        return result;
     }
     std::string layout = node["layout"];
-    if (layout == "tabbed" or layout == "stacking") {
+    if (layout == "tabbed" or layout == "stacked") {
         return node;
     }
     return {};
@@ -130,26 +136,26 @@ json find_deepest_focused(json node) {
                  getId(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
-    if (node["focus"].empty()) {
+    auto focused = focused_subnode(node);
+    if (focused == nullptr) {
         return node;
     }
-    int64_t focus_id = node["focus"][0];
-    for (auto subnode : node["nodes"]) {
-        if (subnode["id"] != focus_id) {
-            continue;
-        }
-        auto result = find_deepest_focused(subnode);
-        if (result != nullptr) {
-            return result;
-        }
-        break;
+    auto result = find_deepest_focused(focused);
+    if (result != nullptr) {
+        return result;
     }
-    return node;
+    return focused;
 }
 
 linear::Sequence available_tabs(json node) {
     node = find_deepest_focused_tabbed(node);
+    if (node == nullptr) {
+        return {{},0};
+    }
     json nodes = node["nodes"];
+    if (nodes == nullptr or nodes.empty()) {
+        return {{},0};
+    }
 
     std::vector<json> leaves;
     std::transform(nodes.begin(), nodes.end(), std::back_inserter(leaves),
@@ -158,10 +164,9 @@ linear::Sequence available_tabs(json node) {
     std::vector<std::string> tabs;
     std::transform(leaves.begin(), leaves.end(), std::back_inserter(tabs), &getId);
 
-    int64_t focus_id = nodes.empty() ? 0 : node["focus"][0].get<int64_t>();
-    auto it = std::find_if(
-        nodes.begin(), nodes.end(),
-        [focus_id](json const &subnode) { return subnode["id"] == focus_id; });
+    int64_t focus_id = node["focus"][0].get<int64_t>();
+    auto it = std::find_if(nodes.begin(), nodes.end(),
+                           [focus_id](json const &node) { return node["id"] == focus_id; });
     size_t index = std::distance(nodes.begin(), it);
     return {tabs, index};
 }
