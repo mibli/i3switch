@@ -10,8 +10,11 @@ message("Building ${CMAKE_PROJECT_NAME} v${GIT_REPO_VERSION}")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(DOCOPT REQUIRED docopt)
+find_package(docopt)
+if (NOT ${DOCOPT_FOUND})
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(DOCOPT REQUIRED docopt)
+endif()
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} src/*.cpp)
 include_directories(${DOCOPT_INCLUDE_DIRS})
