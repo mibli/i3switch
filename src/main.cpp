@@ -6,7 +6,7 @@
 #include "utils/logging.hpp"
 #include "utils/stringf.hpp"
 
-#include <docopt.h>
+#include <docopt/docopt.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
