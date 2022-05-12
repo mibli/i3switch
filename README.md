@@ -68,17 +68,18 @@ And here's a solution to the problem.
 
       i3switch (left | up | right | down) [wrap]
 
+* switch to next/previous floating window
+
+  Switch windows like i3 switches them by default. Same use case as switching tabs, but context is
+  different.
+
+* visual space focus floating movement
+
+  Switch windows basing on their middle point. Currently not working properly.
+
 ### Planned features
 
-* Floating windows switching
-
-  * Directional switching
-
-    Switch windows basing on their middle point, potentially with a flag to include tiled windows
-
-  * Linear switching
-
-    Switch windows like i3 switches them by default
+* tests
 
 ### Building
 

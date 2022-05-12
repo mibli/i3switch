@@ -23,7 +23,6 @@ struct Properties {
     FnTypePtr far;          ///< Second segment side encountered going along a orientation
     FnTypePtr axis;         ///< Axis to seek center alignment to
     bool (*comp)(int, int); ///< Side comparator for the orientation
-    int nearest;            ///< Value for smallest value of the direction
 };
 
 
@@ -93,6 +92,9 @@ Window const *next_in_direction(std::vector<Rect const *> const &rects, int curr
     if (rects.empty()) {
         return nullptr;
     }
+
+    // FIXME: instead of filtering out, keep lowest value and then check whether alignment value
+    // isn't greater... or see is sum of the two is smaller...
 
     // we filter out the ones that we are not interested in at all
     int extent_of_current = (rects[current]->*prop.far)();
