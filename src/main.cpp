@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
     json root = json::parse(result);
     auto visible_nodes = converters::visible_nodes(root);
     auto windows = converters::to_windows(visible_nodes);
-    auto floating = converters::floating_windows(windows);
-    auto tiled = converters::tiled_windows(windows);
+    auto floating = converters::floating(windows);
+    auto tiled = converters::tiled(windows);
     for (auto window: tiled) {
         window.log();
     }
@@ -116,7 +116,8 @@ int main(int argc, char *argv[]) {
 
     std::string target_id;
     if (direction_1d != linear::Direction::INVALID or order > 0) {
-        auto tabs = converters::available_tabs(root);
+        auto windows = converters::available_tabs(root);
+        auto tabs = converters::as_sequence(converters::to_windows(windows));
         tabs.dump();
         std::string const *tab;
         if (order > 0) {
@@ -134,7 +135,7 @@ int main(int argc, char *argv[]) {
         }
     }
     else if (direction_2d != planar::Direction::INVALID) {
-        auto grid = converters::visible_grid(tiled);
+        auto grid = converters::as_arrangement(tiled, planar::Relation::BORDER);
         std::string const *window = grid.next(direction_2d);
         if (window == nullptr && wrap) {
             window = grid.first(direction_2d);
