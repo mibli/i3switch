@@ -4,10 +4,6 @@ cmake_policy(SET CMP0048 NEW)
 execute_process(COMMAND git describe --abbrev=0
     OUTPUT_VARIABLE GIT_REPO_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    add_definitions(-DDEBUG)
-endif()
-
 project(i3switch VERSION "${GIT_REPO_VERSION}")
 message("Building ${CMAKE_PROJECT_NAME} v${GIT_REPO_VERSION}")
 
@@ -22,5 +18,10 @@ include_directories(${DOCOPT_INCLUDE_DIRS})
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${DOCOPT_LIBRARIES})
+
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DDEBUG)
+    target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -g -gstabs)
+endif()
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
