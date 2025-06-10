@@ -1,3 +1,5 @@
 /src/i3switch/keyboard
 build
 .build/
+rust/target/
+rust/Cargo.lock
