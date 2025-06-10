@@ -27,7 +27,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} Threads::Threads)
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     add_definitions(-DDEBUG)
-    target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -g -gstabs)
+    target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -g -gstabs -ggdb)
 endif()
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
