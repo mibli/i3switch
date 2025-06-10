@@ -1,10 +1,18 @@
 #include "converters.hpp"
 #include "utils/logging.hpp"
+#include <set>
 
 extern logging::Logger logger;
 
 namespace converters {
 namespace {
+
+enum class LayoutType {
+    DIRECTIONAL,
+    SWITCHING,
+    SKIPPED,
+    INVALID
+};
 
 std::string get_id(json node) {
     return std::to_string(node["id"].get<int64_t>());
@@ -35,11 +43,15 @@ size_t focused_index(Windows const &windows) {
     return std::distance(windows.begin(), it);
 }
 
+bool is_end_node(json const &node) {
+    return (node["nodes"].empty() and node["type"] == "con");
+}
+
 } // namespace
 
 json focused_subnode(json &node) {
     auto &focus = node["focus"];
-    if (focus == nullptr or focus.empty()) {
+    if (is_end_node(node) or focus == nullptr or focus.empty()) {
         return nullptr;
     }
     int64_t focus_id = focus[0];
@@ -51,74 +63,115 @@ json focused_subnode(json &node) {
     return *it;
 }
 
+LayoutType get_layout_type(json const &node) {
+    std::string layout = node["layout"];
+    if (node["type"] == "workspace" or node["type"] == "root") {
+        return LayoutType::SWITCHING;
+    }
+    else if (layout == "splith" or layout == "splitv")
+    {
+        return LayoutType::DIRECTIONAL;
+    }
+    else if (layout ==  "tabbed" or layout == "stacked" or layout == "output")
+    {
+        return LayoutType::SWITCHING;
+    }
+    else if (layout == "dockarea")
+    {
+        return LayoutType::SKIPPED;
+    }
+    else {
+        logger.critical("Unsupported layout:%s found for id: %s", layout.c_str(), get_id(node).c_str());
+        return LayoutType::INVALID;
+    }
+}
+
+bool is_invisible_node(json const &node) {
+    return (node["rect"]["width"] == 0 or node["rect"]["height"] == 0);
+}
+
 std::vector<json> visible_nodes(json node) {
-    logger.debug("Node iterated id:%ld type:%s layout:%s",
+    logger.debug("V Node iterated id:%ld type:%s layout:%s",
                  node["id"].get<int64_t>(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
-    if (node["nodes"].empty() and node["type"] == "con") {
-        if (node["rect"]["width"] == 0 or node["rect"]["height"] == 0) {
+    // Does not have children
+    if (is_end_node(node)) {
+        if (is_invisible_node(node)) {
             return {};
         }
         return {node};
     }
-    std::string layout = node["layout"];
-    if (layout == "splith" or layout == "splitv" or layout == "output") {
-        std::vector<json> result;
-        auto &floating_nodes = node["floating_nodes"];
-        result.insert(result.end(), floating_nodes.begin(), floating_nodes.end());
-        for (auto &subnode : node["nodes"]) {
-            auto leaves = visible_nodes(subnode);
-            result.insert(result.end(), leaves.begin(), leaves.end());
-        }
-        return result;
-    } else if (layout == "tabbed" or layout == "stacked") {
-        auto focused = focused_subnode(node);
-        if (focused != nullptr) {
-            return visible_nodes(focused);
-        }
-    } else if (layout == "dockarea") {
-        return {};
-    } else {
-        logger.critical("Unsupported layout:%s found for id: %s", layout.c_str(), get_id(node).c_str());
+
+    // Has children
+    auto layout_type = get_layout_type(node);
+    switch (layout_type) {
+        case LayoutType::DIRECTIONAL:
+            {
+                std::vector<json> subnodes;
+
+                // add subnodes
+                for (auto &subnode : node["nodes"]) {
+                    auto leaves = visible_nodes(subnode);
+                    subnodes.insert(subnodes.end(), leaves.begin(), leaves.end());
+                }
+                return subnodes;
+            }
+        case LayoutType::SWITCHING:
+            {
+                std::vector<json> subnodes;
+
+                // add floating nodes
+                auto &floating_nodes = node["floating_nodes"];
+                subnodes.insert(subnodes.end(), floating_nodes.begin(), floating_nodes.end());
+
+                // add subnodes
+                auto subnode = focused_subnode(node);
+                if (subnode != nullptr) {
+                    auto leaves = visible_nodes(subnode);
+                    subnodes.insert(subnodes.end(), leaves.begin(), leaves.end());
+                }
+            }
+        case LayoutType::SKIPPED:
+        case LayoutType::INVALID:
+            return {};
     }
     return {};
 }
 
 json find_deepest_focused_tabbed(json node) {
-    logger.debug("Node iterated id:%s type:%s layout:%s",
+    logger.debug("T Node iterated id:%s type:%s layout:%s",
                  get_id(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
-    auto focused = focused_subnode(node);
-    if (focused == nullptr) {
+    auto subnode = focused_subnode(node);
+    if (subnode == nullptr) {
         return {};
     }
-    auto result = find_deepest_focused_tabbed(focused);
-    if (result != nullptr) {
-        return result;
+    auto endnode = find_deepest_focused_tabbed(subnode);
+    if (endnode != nullptr) {
+        return endnode;
     }
-    std::string layout = node["layout"];
-    if (layout == "tabbed" or layout == "stacked") {
+    if (get_layout_type(node) == LayoutType::SWITCHING) {
         return node;
     }
     return {};
 }
 
 json find_deepest_focused(json node) {
-    logger.debug("Node iterated id:%s type:%s layout:%s",
+    logger.debug("F Node iterated id:%s type:%s layout:%s",
                  get_id(node).c_str(),
                  node["type"].get<std::string>().c_str(),
                  node["layout"].get<std::string>().c_str());
-    auto focused = focused_subnode(node);
-    if (focused == nullptr) {
+    auto subnode = focused_subnode(node);
+    if (subnode == nullptr) {
         return node;
     }
-    auto result = find_deepest_focused(focused);
-    if (result != nullptr) {
-        return result;
+    auto endnode = find_deepest_focused(subnode);
+    if (endnode != nullptr) {
+        return endnode;
     }
-    return focused;
+    return subnode;
 }
 
 std::vector<json> available_tabs(json node) {
