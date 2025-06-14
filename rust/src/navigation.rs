@@ -64,10 +64,13 @@ pub fn get_window_of_number(tree: &json::Value, number: usize) -> u64 {
 fn get_linear_sequence(tree: &json::Value) -> linear::Sequence {
     let visible_nodes = converters::visible_nodes(tree);
     let windows = converters::to_windows(visible_nodes);
-    let floating = converters::floating(&windows);
+    let mut floating = converters::floating(&windows);
+
+    logging::debug!("Floating windows: {:?}", floating);
 
     if converters::any_focused(&floating) {
         logging::debug!("Using floating windows for linear sequence.");
+        floating.sort_by_key(|w| w.rect.x);
         converters::as_sequence(&floating)
     } else {
         logging::debug!("Using available tabs for linear sequence.");
@@ -85,13 +88,13 @@ fn get_planar_arrangement(tree: &json::Value) -> planar::Arrangement {
     let windows = converters::to_windows(visible_nodes);
     let floating = converters::floating(&windows);
 
+    // TODO: Consider allowing directional movement in mixed mode (floating + tiled).
     if converters::any_focused(&floating) {
         logging::debug!("Using floating windows for planar arrangement.");
         return converters::as_arrangement(&floating, planar::Relation::Center);
     } else {
-        logging::debug!("Using available tabs for planar arrangement.");
-        let nodes = converters::available_tabs(tree);
-        let windows = converters::to_windows(nodes);
-        return converters::as_arrangement(&windows, planar::Relation::Border);
+        logging::debug!("Using available tiled for planar arrangement.");
+        let tiled = converters::tiled(&windows);
+        return converters::as_arrangement(&tiled, planar::Relation::Border);
     }
 }

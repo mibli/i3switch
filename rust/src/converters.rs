@@ -19,10 +19,10 @@ use crate::logging::OptionExt;
 /// This enum represents a window in a window manager's tree structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Window {
-    id: u64,
-    rect: Rect,
-    focused: bool,
-    floating: bool,
+    pub id: u64,
+    pub rect: Rect,
+    pub focused: bool,
+    pub floating: bool,
 }
 
 /// This enum represents the layout type of a node in a window manager's tree structure.
@@ -41,10 +41,11 @@ pub type Windows = Vec<Window>;
 /// This function traverses the node structure and collects nodes that are not invisible
 /// or end nodes.
 pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
-    logging::debug!("V Node iterated id:{} type:{} layout:{}", 
+    logging::debug!("V Node iterated id:{} type:{} layout:{}, name:{}", 
         node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"),
+        node.get("name").and_then(|v| v.as_str()).unwrap_or("null"));
     if is_end_node(node) {
         if is_invisible_node(node) {
             return vec![];
@@ -62,16 +63,25 @@ pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
             return nodes;
         }
         Layout::Switchable => {
+            if is_content_node(node) {
+                if let Some(focused_node) = focused_subnode(node) {
+                    return visible_nodes(focused_node);
+                }
+            }
+
             let mut nodes: Vec<&'a Value> = vec![];
             if let Some(floating_nodes) = node.get("floating_nodes").unwrap_or(&Value::Null).as_array() {
                 nodes.extend(floating_nodes.iter());
             }
-            if let Some(focused) = focused_subnode(node) {
-                nodes.extend(visible_nodes(focused));
+            if let Some(subnodes) = node.get("nodes").unwrap_or(&Value::Null).as_array() {
+                for subnode in subnodes {
+                    nodes.extend(visible_nodes(subnode));
+                }
             }
             return nodes;
         }
-        Layout::Skipped | Layout::Invalid => {
+        Layout::Skipped => vec![],
+        Layout::Invalid => {
             logging::error!("Invalid layout encountered: {:?}", layout);
             return vec![]
         }
@@ -88,7 +98,7 @@ pub fn available_tabs(node: &Value) -> Vec<&Value> {
             return tabs_node.iter().map(|tab| find_deepest_focused(tab).unwrap_or(tab)).collect();
         }
     }
-    println!("No available tabs found in node");
+    logging::info!("No available tabs found in the provided node.");
     vec![]
 }
 
@@ -183,8 +193,14 @@ fn is_invisible_node(node: &Value) -> bool {
 /// Checks if a node is an end node, which is defined as having no subnodes and being of type
 /// "con".
 fn is_end_node(node: &Value) -> bool {
-    node["nodes"].as_array().unwrap_or(&vec![]).is_empty()
-        && node["type"].as_str().unwrap_or("") == "con"
+    let is_empty = node.get("nodes").and_then(|n| n.as_array()).unwrap_or(&vec![]).is_empty();
+    let type_str = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
+    is_empty && ( type_str == "con" || type_str == "floating_con" )
+}
+
+/// Checks if a node is a workspace, which is defined as having a type of "workspace".
+fn is_content_node(node: &Value) -> bool {
+    node["name"].as_str().unwrap_or("") == "content" && !is_end_node(node)
 }
 
 /// Returns the subnode that is currently focused, if any. If the node is an end node or has no
@@ -205,9 +221,9 @@ fn focused_subnode(node: &Value) -> Option<&Value> {
 /// Determines the layout type of a node based on its properties.
 /// Requires a "layout" field and a "type" field in the node.
 fn get_layout(node: &Value) -> Layout {
-    let layout = node["layout"].as_str().unwrap_or("");
-    let node_type = node["type"].as_str().unwrap_or("");
-    if node_type == "workspace" || node_type == "root" {
+    let layout = node.get("layout").and_then(|l| l.as_str()).unwrap_or("");
+    let node_type = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
+    if is_content_node(node) || node_type == "workspace" || node_type == "root" {
         Layout::Switchable
     } else if layout == "splith" || layout == "splitv" {
         Layout::Directional
@@ -224,8 +240,8 @@ fn get_layout(node: &Value) -> Layout {
 fn find_deepest_focused(node: &Value) -> Option<&Value> {
     logging::debug!("F Node iterated id:{} type:{} layout:{}",
         node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"));
     let subnode = focused_subnode(node);
     if subnode.is_some() {
         let deepest = find_deepest_focused(subnode?);
@@ -239,10 +255,10 @@ fn find_deepest_focused(node: &Value) -> Option<&Value> {
 /// Finds the deepest focused node that is tabbed, meaning it has a layout of `tabbed` or
 /// `stacked`.
 fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
-    logging::debug!("T Tabbed Node iterated id:{} type:{} layout:{}",
+    logging::debug!("T Node iterated id:{} type:{} layout:{}",
         node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"));
     if let Some(subnode) = focused_subnode(node) {
         let endnode = find_deepest_focused_tabbed(subnode);
         if endnode.is_some() {
@@ -257,7 +273,14 @@ fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::logging;
     use serde_json::json;
+    use ctor::ctor;
+
+    #[ctor]
+    fn setup() {
+        logging::init();
+    }
 
     /// Tests for visible nodes extraction.
     /// We expect the function to return all nodes that are not invisible.
@@ -285,10 +308,159 @@ mod tests {
             ],
             "rect": {"width": 100, "height": 100}
         });
-        println!("Node: {:?}", node);
         let nodes = visible_nodes(&node);
         assert_eq!(nodes.len(), 1);
         assert_eq!(nodes[0]["id"], 2);
+
+        let node = json!({
+            "id": 0,
+            "type": "root",
+            "layout": "splith",
+            "nodes": [
+                {
+                    "id": 1,
+                    "type": "output",
+                    "layout": "output",
+                    "nodes": [
+                        {
+                            "id": 2,
+                            "type": "con",
+                            "layout": "splith",
+                            "name": "content",
+                            "nodes": [
+                                {
+                                    "id": 3,
+                                    "type": "workspace",
+                                    "layout": "splith",
+                                    "nodes": [
+                                        {
+                                            "id": 4,
+                                            "type": "con",
+                                            "layout": "tabbed",
+                                            "nodes": [
+                                                {
+                                                    "id": 5,
+                                                    "focused": true,
+                                                    "nodes": [],
+                                                    "type": "con",
+                                                    "focus": [],
+                                                    "rect": {"width": 100, "height": 100}
+                                                },
+                                                {
+                                                    "id": 6,
+                                                    "focused": false,
+                                                    "nodes": [],
+                                                    "type": "con",
+                                                    "focus": [],
+                                                    "rect": {"width": 100, "height": 100}
+                                                }
+                                            ],
+                                            "focus": [5, 6],
+                                            "focused": false,
+                                            "rect": {"width": 100, "height": 100}
+                                        }
+                                    ],
+                                    "focus": [4],
+                                    "focused": false,
+                                    "rect": {"width": 100, "height": 100}
+                                }
+                            ],
+                            "focus": [2],
+                            "focused": false,
+                            "rect": {"width": 100, "height": 100}
+                        }
+                    ],
+                    "focus": [1],
+                    "focused": false,
+                    "rect": {"width": 100, "height": 100}
+                },
+                {
+                    "id": 7,
+                    "type": "output",
+                    "layout": "output",
+                    "nodes": [
+                        {
+                            "id": 8,
+                            "type": "con",
+                            "layout": "splith",
+                            "name": "content",
+                            "nodes": [
+                                {
+                                    "id": 12,
+                                    "type": "workspace",
+                                    "layout": "splith",
+                                    "nodes": [
+                                        {
+                                            "id": 13,
+                                            "focused": false,
+                                            "nodes": [],
+                                            "type": "con",
+                                            "focus": [],
+                                            "rect": {"width": 100, "height": 100}
+                                        }
+                                    ],
+                                    "focus": [13],
+                                    "focused": false,
+                                    "rect": {"width": 100, "height": 100}
+                                },
+                                {
+                                    "id": 9,
+                                    "type": "workspace",
+                                    "layout": "splith",
+                                    "nodes": [
+                                        {
+                                            "id": 10,
+                                            "type": "con",
+                                            "layout": "tabbed",
+                                            "nodes": [
+                                                {
+                                                    "id": 11,
+                                                    "focused": false,
+                                                    "nodes": [],
+                                                    "type": "con",
+                                                    "focus": [],
+                                                    "rect": {"width": 100, "height": 100}
+                                                }
+                                            ],
+                                            "focus": [11],
+                                            "focused": false,
+                                        }
+                                    ],
+                                    "floating_nodes": [
+                                        {
+                                            "id": 20,
+                                            "focused": false,
+                                            "nodes": [],
+                                            "type": "con",
+                                            "focus": [],
+                                            "rect": {"width": 100, "height": 100}
+                                        }
+                                    ],
+                                    "focus": [10, 20],
+                                    "focused": false,
+                                    "rect": {"width": 100, "height": 100}
+                                }
+                            ],
+                            "focus": [9, 12],
+                            "focused": false,
+                            "rect": {"width": 100, "height": 100}
+                        }
+                    ],
+                    "focus": [8],
+                    "focused": false,
+                    "rect": {"width": 100, "height": 100}
+                }
+            ],
+            "focus": [1, 7],
+            "focused": false,
+            "rect": {"width": 100, "height": 100}
+        });
+        let nodes = visible_nodes(&node);
+        assert_eq!(nodes.len(), 4);
+        assert!(nodes.iter().any(|n| n["id"] == 5));
+        assert!(nodes.iter().any(|n| n["id"] == 6));
+        assert!(nodes.iter().any(|n| n["id"] == 11));
+        assert!(nodes.iter().any(|n| n["id"] == 20));
     }
 
     /// Tests for extracting available tabs from a node.
@@ -410,6 +582,16 @@ mod tests {
     /// Invalid layouts are marked as invalid.
     #[test]
     fn test_get_layout() {
+        let node = json!({
+            "layout": "splith",
+            "name": "content",
+            "type": "con",
+            "nodes": [
+                {"id": 1, "type": "workspace", "layout": "splith", "nodes": []},
+            ],
+        });
+        assert_eq!(get_layout(&node), Layout::Switchable);
+
         let node = json!({
             "layout": "splith",
             "type": "workspace"
