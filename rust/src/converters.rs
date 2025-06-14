@@ -13,6 +13,8 @@ use serde_json::Value;
 use crate::linear;
 use crate::planar;
 use crate::planar::Rect;
+use crate::logging;
+use crate::logging::OptionExt;
 
 /// This enum represents a window in a window manager's tree structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +41,10 @@ pub type Windows = Vec<Window>;
 /// This function traverses the node structure and collects nodes that are not invisible
 /// or end nodes.
 pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
+    logging::debug!("V Node iterated id:{} type:{} layout:{}", 
+        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
     if is_end_node(node) {
         if is_invisible_node(node) {
             return vec![];
@@ -65,7 +71,10 @@ pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
             }
             return nodes;
         }
-        Layout::Skipped | Layout::Invalid => vec![],
+        Layout::Skipped | Layout::Invalid => {
+            logging::error!("Invalid layout encountered: {:?}", layout);
+            return vec![]
+        }
     }
 }
 
@@ -160,7 +169,8 @@ fn to_planar(window: &Window) -> planar::Window {
 
 /// Returns the index of the currently focused window, if any.
 fn focused_index(windows: &Windows) -> Option<usize> {
-    windows.iter().position(|w| w.focused)
+    windows.iter().position(|w| w.focused).wanted(
+        format!("No focused window found in windows: {:?}", windows).as_str())
 }
 
 /// Checks if a node is an invisible node, which is defined as having a rectangle with zero width
@@ -212,6 +222,10 @@ fn get_layout(node: &Value) -> Layout {
 
 /// Finds the deepest focused node in a tree structure, starting from the given node.
 fn find_deepest_focused(node: &Value) -> Option<&Value> {
+    logging::debug!("F Node iterated id:{} type:{} layout:{}",
+        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
     let subnode = focused_subnode(node);
     if subnode.is_some() {
         let deepest = find_deepest_focused(subnode?);
@@ -225,6 +239,10 @@ fn find_deepest_focused(node: &Value) -> Option<&Value> {
 /// Finds the deepest focused node that is tabbed, meaning it has a layout of `tabbed` or
 /// `stacked`.
 fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
+    logging::debug!("T Tabbed Node iterated id:{} type:{} layout:{}",
+        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
+        node.get("type").and_then(|v| v.as_str()).unwrap_or("unknown"),
+        node.get("layout").and_then(|v| v.as_str()).unwrap_or("unknown"));
     if let Some(subnode) = focused_subnode(node) {
         let endnode = find_deepest_focused_tabbed(subnode);
         if endnode.is_some() {

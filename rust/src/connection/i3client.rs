@@ -2,12 +2,15 @@ use std::io::{self, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::thread;
 
+use crate::logging;
+
 pub struct Client {
     socket: UnixStream,
 }
 
 impl Client {
     pub fn new(socket_path: &str) -> io::Result<Self> {
+        logging::info!("Connecting to i3 IPC socket at: {}", socket_path);
         let socket = UnixStream::connect(socket_path)?;
         Ok(Client { socket })
     }
@@ -26,18 +29,18 @@ impl Client {
         } else {
             return Err(io::Error::new(io::ErrorKind::Other, "Failed to clone socket"));
         }
+
         let packed_request = pack(request_type, payload);
         self.socket.write_all(&packed_request)?;
         self.socket.flush()?;
-        receive_thread.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "Thread panicked"))?
-    }
+        logging::info!("Sent request: {:?} with payload: {}", request_type, payload);
 
-    fn receive(&mut self) -> io::Result<String> {
-        Self::receive_unbound(&mut self.socket, Response::Command)
+        receive_thread.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "Thread panicked"))?
     }
 
     fn receive_unbound(socket: &mut UnixStream, expected_type: Response) -> io::Result<String> {
         let expected_type = expected_type as u32;
+        logging::debug!("Receiving started for response type: {:?}", expected_type);
         loop {
             let mut header = [0u8; std::mem::size_of::<Header>()];
             socket.read_exact(&mut header)?;
@@ -49,9 +52,14 @@ impl Client {
             // Since we read the header, we have to read the payload.
             let mut payload = vec![0u8; header.payload_size as usize];
             socket.read_exact(&mut payload)?;
-            if header.msg_type != expected_type {
+
+            let received_type = header.msg_type;
+            if received_type == expected_type {
+                logging::debug!("Received response: {:?}, with payload size: {}", received_type, payload.len());
+                logging::debug!("Receiving finished for response type: {:?}", expected_type);
                 return String::from_utf8(payload).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e));
             }
+            logging::warning!("Received unexpected response type: {:?}, expected: {:?}", received_type, expected_type);
         }
     }
 }
