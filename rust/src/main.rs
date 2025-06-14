@@ -1,4 +1,12 @@
-use clap::{Parser, Args, ValueEnum, Subcommand};
+use clap::{Parser, ValueEnum, Subcommand};
+use std::process;
+use serde_json as json;
+
+mod planar;
+mod linear;
+mod connection;
+mod navigation;
+mod converters;
 
 /// i3switch - A simple command-line utility to switch focus in i3 window manager
 #[derive(Parser, Debug)]
@@ -58,20 +66,7 @@ enum WrapOption {
     NoWrap,
 }
 
-#[derive(Debug)]
-enum LinearDirection {
-    Next,
-    Prev,
-}
-
-#[derive(Debug)]
-enum PlanarDirection {
-    Right,
-    Down,
-    Left,
-    Up,
-}
-
+/// Implement conversion from WrapOption to bool
 impl From<WrapOption> for bool {
     fn from(option: WrapOption) -> Self {
         match option {
@@ -81,57 +76,64 @@ impl From<WrapOption> for bool {
     }
 }
 
-fn get_linear_direction(command: &RootCommand) -> Option<LinearDirection> {
+/// Get the linear direction based on the command
+fn get_linear_direction(command: &RootCommand) -> Option<linear::Direction> {
     match command {
-        RootCommand::Next => Some(LinearDirection::Next),
-        RootCommand::Prev => Some(LinearDirection::Prev),
+        RootCommand::Next => Some(linear::Direction::Next),
+        RootCommand::Prev => Some(linear::Direction::Prev),
         _ => None,
     }
 }
 
-fn get_planar_direction(command: &RootCommand) -> Option<PlanarDirection> {
+/// Get the planar direction based on the command
+fn get_planar_direction(command: &RootCommand) -> Option<planar::Direction> {
     match command {
-        RootCommand::Right => Some(PlanarDirection::Right),
-        RootCommand::Down => Some(PlanarDirection::Down),
-        RootCommand::Left => Some(PlanarDirection::Left),
-        RootCommand::Up => Some(PlanarDirection::Up),
+        RootCommand::Right => Some(planar::Direction::Right),
+        RootCommand::Down  => Some(planar::Direction::Down),
+        RootCommand::Left  => Some(planar::Direction::Left),
+        RootCommand::Up    => Some(planar::Direction::Up),
         _ => None,
     }
-}
-
-/// Handle the focus switching based on the provided command and options
-fn handle_direction1d(direction: LinearDirection, wrap: bool) {
-    println!("Switching focus in direction: {:?}, wrap: {}", direction, wrap);
-}
-
-/// Handle the focus switching in a 2D plane based on the provided command and options
-fn handle_direction2d(direction: PlanarDirection, wrap: bool) {
-    println!("Switching focus in direction: {:?}, wrap: {}", direction, wrap);
-}
-
-/// Handle switching focus to a specific tab/window number
-fn handle_number(number: u32) {
-    // Placeholder for handling number focus switching
-    println!("Switching focus to tab/window number: {}", number);
 }
 
 fn main() {
+    // TODO use env logging for debug logging
     let cli = Cli::parse();
 
     let wrap = bool::from(cli.wrap);
 
+    // Establish a connection to the i3 IPC server and get the tree structure
+    let i3_socket_path_output = process::Command::new("i3").arg("--get-socketpath").output()
+        .expect("Failed to get i3 socket path");
+    let i3_path = String::from_utf8(i3_socket_path_output.stdout)
+        .expect("Failed to parse i3 socket path output");
+    let mut client = connection::i3client::Client::new(&i3_path)
+        .expect("Failed to connect to i3 IPC server");
+    let tree = client.request(connection::i3client::Request::GetTree, "")
+        .expect("Failed to get i3 tree");
+
+    // Parse the i3 tree to get the current workspace and window information
+    let tree = json::from_str::<json::Value>(&tree)
+        .expect("Failed to parse i3 tree JSON");
+
+    let window_id: u64;
     if let Some(direction) = get_linear_direction(&cli.root_command) {
-        handle_direction1d(direction, wrap);
+        window_id = navigation::get_window_to_switch_to(&tree, direction, wrap);
     } else if let Some(direction) = get_planar_direction(&cli.root_command) {
-        handle_direction2d(direction, wrap);
+        window_id = navigation::get_window_in_direction(&tree, direction, wrap);
     } else if let RootCommand::Number { number } = &cli.root_command {
         if wrap {
-            eprintln!("Error: Wrap option is not applicable for this command.");
-        } else {
-            handle_number(*number);
+            eprintln!("Warning: Wrap option is skipped for number switching.");
         }
+        window_id = navigation::get_window_of_number(&tree, *number as usize);
     } else {
         eprintln!("Error: Invalid command provided.");
         std::process::exit(1);
     }
+
+    let payload = format!("[id={}] focus", window_id);
+    client.request(connection::i3client::Request::Command, &payload)
+        .expect("Failed to send focus command");
+
+    std::process::exit(0);
 }
