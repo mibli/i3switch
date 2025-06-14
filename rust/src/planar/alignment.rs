@@ -20,6 +20,8 @@
 /// ```
 
 use crate::planar::Rect;
+use crate::logging;
+use crate::logging::OptionExt;
 
 /// This enum is used to specify the direction in which the focus should be moved.
 #[allow(dead_code)]
@@ -111,9 +113,6 @@ fn closest_in_direction<'a>(rects: &'a [&Rect], at_least: i32, properties: &Prop
         .map(|rect| (properties.near)(rect))
         .min_by_key(min_key);
 
-    println!("Rectangles: {:?}", rects.iter().filter(|rect| (properties.comp)((properties.near)(rect), at_least)).collect::<Vec<_>>());
-    println!("Minimum extent found: {:?}", min_extent);
-
     // Filter the rectangles that match the minimum extent found.
     match min_extent {
         Some(min) => rects.iter()
@@ -144,12 +143,22 @@ fn aligned_in_direction<'a>(rects: &'a [&Rect], close_to: i32, properties: &Prop
 /// Finds the next rectangle in a given direction based on the properties.
 #[allow(dead_code)]
 pub fn next_in_direction<'a>(rects: &'a [&Rect], current: &Rect, properties: &Properties) -> Option<usize> {
-    let mut closest = closest_in_direction(rects, (properties.far)(&current), &properties);
+    let at_least = (properties.far)(&current);
+    let mut closest = closest_in_direction(rects, at_least, &properties);
+    logging::debug!("Closest found: {:?} for extent: {}", closest.len(), at_least);
+
     if closest.iter().any(|rect| std::ptr::eq(*rect, current)) {
-        let safety_margin = if (properties.comp)(i32::MIN, i32::MAX) { -1 } else { 1 };
-        closest = closest_in_direction(rects, (properties.near)(&current) + safety_margin, &properties);
+        logging::debug!("Current rectangle is in the closest set, looking for next.");
+
+        let at_least = if (properties.comp)(i32::MIN, i32::MAX) { at_least - 1 } else { at_least + 1 };
+        closest = closest_in_direction(rects, at_least, &properties);
+        logging::debug!("Closest after safety margin: {:?} for extent: {}", closest.len(), at_least);
     }
-    let aligned = aligned_in_direction(&closest, (properties.axis)(&current), &properties);
+
+    let axis = (properties.axis)(&current);
+    let aligned = aligned_in_direction(&closest, axis, &properties);
+    logging::debug!("Aligned found: {:?} for axis: {}", aligned.len(), axis);
+
     if let Some(next) = aligned.first() {
         rects.iter().position(|rect| std::ptr::eq(*rect, *next))
     } else {
@@ -161,7 +170,12 @@ pub fn next_in_direction<'a>(rects: &'a [&Rect], current: &Rect, properties: &Pr
 pub fn first_of_direction<'a>(rects: &'a [&Rect], current: &Rect, properties: &Properties) -> Option<usize> {
     let at_least: i32 = if (properties.comp)(i32::MIN, i32::MAX) { i32::MAX } else { i32::MIN };
     let closest = closest_in_direction(rects, at_least, properties);
-    let aligned = aligned_in_direction(&closest, (properties.axis)(&current), &properties);
+    logging::debug!("Closest found: {:?} for extent: {}", closest.len(), at_least);
+
+    let axis = (properties.axis)(&current);
+    let aligned = aligned_in_direction(&closest, axis, &properties);
+    logging::debug!("Aligned found: {:?} for axis: {}", aligned.len(), axis);
+
     if let Some(first) = aligned.first() {
         rects.iter().position(|rect| std::ptr::eq(*rect, *first))
     } else {
