@@ -19,7 +19,5 @@ jobs:
       run: sudo apt install -y libdocopt0 libdocopt-dev
     - name: Install nlohmann JSON
       run: sudo apt install -y nlohmann-json3-dev
-    - name: Run CMake
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    - name: Build with Make
-      run: make -C build
+    - name: cpp build
+      run: ./build.sh cpp
