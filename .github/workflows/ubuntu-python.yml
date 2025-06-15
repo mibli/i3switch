@@ -1,0 +1,37 @@
+name: Python Build and Package on Ubuntu
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
+    - name: Install pip
+      run: sudo apt install -y python3-pip
+    - name: Install pyinstaller
+      run: sudo pip3 install pyinstaller
+    - name: Install dependencies
+      run: sudo pip3 install -r python/requirements.txt
+    - name: Python build
+      run: ./build.sh python
+    - name: Install Ruby and fpm
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev build-essential
+        gem install --user-install fpm
+    - name: Package Python binary
+      run: ./scripts/fpm_package_ci.sh python python/build/bin/i3switch deb
+    - name: Upload Python debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: i3switch-python.deb
+        path: i3switch-python*.deb
