@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
     - name: Install i3-wm
       run: sudo apt install -y i3-wm
     - name: Install docopt
@@ -21,3 +23,15 @@ jobs:
       run: sudo apt install -y nlohmann-json3-dev
     - name: cpp build
       run: ./build.sh cpp
+    - name: Install Ruby and fpm
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev build-essential
+        gem install --user-install fpm
+    - name: Package C++ binary
+      run: ./scripts/fpm_package_ci.sh cpp cpp/build/i3switch deb
+    - name: Upload C++ debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: i3switch-cpp.deb
+        path: i3switch-cpp*.deb

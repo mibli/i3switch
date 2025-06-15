@@ -12,12 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
     - name: Install pip
       run: sudo apt install -y python3-pip
     - name: Install pyinstaller
       run: sudo pip3 install pyinstaller
     - name: Install dependencies
       run: sudo pip3 install -r python/requirements.txt
-    - name: cpp build
+    - name: Python build
       run: ./build.sh python
+    - name: Install Ruby and fpm
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev build-essential
+        gem install --user-install fpm
+    - name: Package Rust binary
+      run: ./scripts/fpm_package_ci.sh python python/build/bin/i3switch deb
+    - name: Upload Rust debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: i3switch-python.deb
+        path: i3switch-python*.deb
