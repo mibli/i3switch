@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: C++ Build and Package on Ubuntu
 
 on:
   push:

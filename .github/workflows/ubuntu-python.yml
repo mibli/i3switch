@@ -1,4 +1,4 @@
-name: Python CI
+name: Python Build and Package on Ubuntu
 
 on:
   push:
@@ -28,9 +28,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ruby ruby-dev build-essential
         gem install --user-install fpm
-    - name: Package Rust binary
+    - name: Package Python binary
       run: ./scripts/fpm_package_ci.sh python python/build/bin/i3switch deb
-    - name: Upload Rust debian package
+    - name: Upload Python debian package
       uses: actions/upload-artifact@v4
       with:
         name: i3switch-python.deb

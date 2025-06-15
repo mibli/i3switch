@@ -11,7 +11,7 @@ for i in cpp python rust; do
     [[ "$language" != "$i" ]] && conflict_flags+=( --conflicts "i3switch-$i" )
 done
 
-echo exec "$HOME"/.local/share/gem/ruby/*/bin/fpm -s dir -t "$type" \
+exec "$HOME"/.local/share/gem/ruby/*/bin/fpm -s dir -t "$type" \
     -n "i3switch-$language" \
     -v "$version" \
     --description "i3 advanced window switching ($language version)" \
