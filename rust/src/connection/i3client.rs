@@ -1,24 +1,27 @@
 use std::io::{self, Read, Write};
 use std::os::unix::net::UnixStream;
+use std::convert::TryInto;
 use std::thread;
 
 use crate::logging;
 
+/// Represents a client for communicating with the i3 IPC socket.
 pub struct Client {
     socket: UnixStream,
 }
 
 impl Client {
+    /// Creates a new `Client` instance that connects to the i3 IPC socket at the specified path.
     pub fn new(socket_path: &str) -> io::Result<Self> {
         logging::info!("Connecting to i3 IPC socket at: {}", socket_path);
         let socket = UnixStream::connect(socket_path)?;
         Ok(Client { socket })
     }
 
-    pub fn close(&mut self) {
-        let _ = self.socket.shutdown(std::net::Shutdown::Both);
-    }
-
+    /// Sends a request to the i3 IPC socket and waits for a response.
+    /// This function blocks until a response of the expected type is received or an error occurs,
+    /// for example if the socket is closed or an unexpected response type is received.
+    /// It will also fail if unable to send the request or if the response cannot be parsed.
     pub fn request(&mut self, request_type: Request, payload: &str) -> io::Result<String> {
         let receive_thread: thread::JoinHandle<io::Result<String>>;
         let return_type = Response::from(request_type);
@@ -38,6 +41,9 @@ impl Client {
         receive_thread.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "Thread panicked"))?
     }
 
+    /// Receives a response from the i3 IPC socket.
+    /// This function blocks until a response of the expected type is received or an error occurs,
+    /// for example if the socket is closed or an unexpected response type is received.
     fn receive_unbound(socket: &mut UnixStream, expected_type: Response) -> io::Result<String> {
         let expected_type = expected_type as u32;
         logging::debug!("Receiving started for response type: {:?}", expected_type);
@@ -64,6 +70,8 @@ impl Client {
     }
 }
 
+/// Shamelessly copied from i3ipc.h
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 pub enum Request {
     Command         = 0,
@@ -81,6 +89,8 @@ pub enum Request {
     GetBindingState = 12,
 }
 
+/// Shamelessly copied from i3ipc.h
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 enum Response {
     Command         = 0,
@@ -118,6 +128,7 @@ impl From<Request> for Response {
     }
 }
 
+/// Used to pack and unpack the IPC message header.
 #[repr(packed)]
 struct Header {
     magic: [u8; 6],
@@ -154,6 +165,7 @@ impl Header {
     }
 }
 
+/// Packs the request type and payload into a byte vector.
 fn pack(request_type: Request, payload: &str) -> Vec<u8> {
     let mut buffer = Vec::new();
     let header = Header::new(payload.len() as u32, request_type as u32);
@@ -166,6 +178,7 @@ fn pack(request_type: Request, payload: &str) -> Vec<u8> {
 mod tests {
     use super::*;
 
+    /// Test the conversion between the `Header` struct and its byte representation.
     #[test]
     fn test_header() {
         let header = Header::new(10, 1);
@@ -177,6 +190,7 @@ mod tests {
         assert_eq!(bytes, parsed_bytes);
     }
 
+    /// Test the packing of a Header and payload into a byte vector.
     #[test]
     fn test_pack() {
         let payload = "test";

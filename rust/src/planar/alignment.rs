@@ -21,7 +21,6 @@
 
 use crate::planar::Rect;
 use crate::logging;
-use crate::logging::OptionExt;
 
 /// This enum is used to specify the direction in which the focus should be moved.
 #[allow(dead_code)]

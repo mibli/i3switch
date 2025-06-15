@@ -117,5 +117,4 @@ pub (super) use warning;
 pub (super) use error;
 pub (super) use debug;
 pub (super) use critical;
-pub (super) use log_with_context;
 pub (super) use function_name;
