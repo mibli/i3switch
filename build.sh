@@ -1,27 +1,59 @@
-#!/bin/sh
-while [ -n "$1" ]; do
-    case "$1" in
-        "rebuild")
-            rm -rf build
-            mkdir -p build
+#!/bin/bash
+builds=( )
+rebuild=
+
+die() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
+rust_arg="rust:rust/target/x86_64-unknown-linux-gnu/release/i3switch"
+python_arg="python:python/build/bin/i3switch"
+cpp_arg="cpp:cpp/build/i3switch"
+
+for i in "$@"; do
+    case "$i" in
+        rust)
+            builds+=("$rust_arg")
             ;;
-        "debug")
-            build_type="Debug"
+        python)
+            builds+=("$python_arg")
             ;;
-        "release")
-            build_type="Release"
+        cpp)
+            builds+=("$cpp_arg")
             ;;
-        ?)
-            echo "Usage: ./build.sh [(debug|release)] [rebuild]"
+        all)
+            builds+=("$rust_arg" "$python_arg" "$cpp_arg")
+            ;;
+        rebuild)
+            rebuild=rebuild
+            ;;
+        *)
+            echo "Unknown option: $i"
+            echo "Usage: $0 ((rust|python|cpp)+|all) [rebuild]"
+            exit 1
+            ;;
     esac
-    shift
 done
 
-: ${build_type="Release"}
-: ${install:=false}
+if [ ${#builds[@]} -eq 0 ]; then
+    echo "Usage: $0 ((rust|python|cpp)+|all) [rebuild]"
+    exit 1
+fi
 
-mkdir -p build
-pushd build
-cmake .. -DCMAKE_BUILD_TYPE="$build_type"
-make
-popd
+for build in "${builds[@]}"; do
+    build_dir=${build%%:*}
+    build_path=${build##*:}
+
+    echo "Building $build_dir..."
+
+    (
+        cd "$build_dir" || die "Failed to change directory to $build_dir"
+        if ./build.sh -h | grep -q "test"; then
+            ./build.sh test || die "Failed to build tests for $build_dir"
+        fi
+        ./build.sh release $rebuild || die "Failed to build $build_dir"
+    ) && {
+        echo "Build for $build_dir completed successfully, output binary can be found at $build_path"
+    }
+done

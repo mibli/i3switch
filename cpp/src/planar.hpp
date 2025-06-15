@@ -39,12 +39,13 @@ enum class Relation {
 
 class Arrangement {
     public:
-        Arrangement(std::vector<Window> windows, size_t current, Relation relation);
+      Arrangement(std::vector<Window> windows = {}, size_t current = 0,
+                  Relation relation = Relation::BORDER);
 
-        std::string const *next(planar::Direction direction) const;
-        std::string const *first(planar::Direction direction) const;
+      std::string const *next(planar::Direction direction) const;
+      std::string const *first(planar::Direction direction) const;
 
-        void dump();
+      void dump();
 
     private:
         Window const *closest_border(std::function<int(Rect const &)> near_extent_fn,
