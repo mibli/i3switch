@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
+""" i3 geometric window switcher
 
-from argparse import ArgumentParser
+Usage:
+  i3switch daemon
+  i3switch (next | prev) [wrap]
+  i3switch number <num>
+  i3switch (left | up | right | down) [group]
+  i3switch (-h | --help)
+
+Options:
+  next          Move focus to next tab/window
+  prev          Move focus to previous tab/window
+  number <num>  Move focus to tab/window number <num>
+  right         Move focus right
+  down          Move focus down
+  left          Move focus left
+  up            Move focus up
+  -h --help     Show this help message
+
+"""
+
+from docopt import docopt
 from . import controller
+
+
+VERSION = '0.0.0'
 
 
 def main(control):
@@ -17,41 +40,64 @@ def main(control):
         sleep(1)
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser(description='Tabs-concious switching')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--direction', type=str,
-                       choices=controller.DIRECTIONS,
-                       help='Switch to [direction] of focused window (ignores tabs)')
-    parser.add_argument('-t', '--tab', action='store_true',
-                        help='For use with -d, to switch tabs')
-    parser.add_argument('-p', '--parent', action='store_true',
-                        help='For use with -d, to switch tabs')
-    group.add_argument('-n', '--number', type=int,
-                       help='Try to switch to n-th tab of focused container')
-    args = parser.parse_args()
+def entrypoint():
+    """ Parses arguments and calls main() """
+    arguments = docopt(__doc__, version='i3switch ' + VERSION)
 
-    def print_help_and_die(message):
-        print(message)
-        parser.print_help()
+    direction = None
+    number = None
+    daemon = None
+    if arguments['next']:
+        direction = 'right'
+    elif arguments['prev']:
+        direction = 'left'
+    elif arguments['up']:
+        direction = 'up'
+    elif arguments['down']:
+        direction = 'down'
+    elif arguments['left']:
+        direction = 'left'
+    elif arguments['right']:
+        direction = 'right'
+    elif arguments['number']:
+        try:
+            number = int(arguments['<num>'])
+        except ValueError:
+            print("Invalid number: {}".format(arguments['<num>']))
+            exit(1)
+    elif arguments['daemon']:
+        daemon = True
+    else:
+        print("Invalid command. Use -h or --help for usage information.")
         exit(1)
 
-    if args.direction is None:
-        if args.tab:
-            print_help_and_die("Use --tab only with -d or --direction")
-        if args.parent:
-            print_help_and_die("Use --parent only with -d or --direction")
-    if args.number is not None and args.number <= 0:
-        print_help_and_die("Tab indexes start from 1")
+    group_tabs = 'nogroup'
+    wrap = 'nowrap'
+    if direction in ['up', 'down', 'left', 'right']:
+        group_tabs = 'group' if arguments['group'] else 'nogroup'
+    else:
+        if arguments['wrap']:
+            print("Wrap option is not applicable for this command")
+            exit(1)
+    if direction in ['next', 'prev']:
+        wrap = 'wrap' if arguments['wrap'] else 'nowrap'
+    else:
+        if arguments['wrap']:
+            print("Wrap option is not applicable for this command")
+            exit(1)
 
     i3 = controller.Controller()
 
-    if args.number:
-        i3.switch_to_tab(args.number)
-    elif args.direction is not None:
-        if args.tabs:
-            i3.switch_tabs(args.direction)
+    if number:
+        i3.switch_to_tab(number)
+    elif direction is not None:
+        if direction in ['next', 'prev']:
+            i3.switch_tabs(direction, wrap)
         else:
-            i3.switch(args.direction, args.parent)
-    else:
+            i3.switch(direction, group_tabs)
+    elif daemon:
         main(i3)
+
+
+if __name__ == "__main__":
+    entrypoint()

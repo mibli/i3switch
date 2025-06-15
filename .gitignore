@@ -3,3 +3,4 @@ build
 .build/
 rust/target/
 rust/Cargo.lock
+__pycache__
