@@ -34,7 +34,7 @@ fi
 if [ "$version" = "0.0.0" ]; then
     git_version=$(git describe --tags --abbrev=0 --match="cpp-v[0-9]*" 2>/dev/null)
     if [ -z "$git_version" ]; then
-        echo "[WARN] No version tag found, using 0.0.0"
+        echo "Warning: No version tag found, using 0.0.0" >&2
     else
         version=${git_version#cpp-v}
     fi

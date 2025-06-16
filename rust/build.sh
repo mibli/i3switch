@@ -38,18 +38,26 @@ done
 
 : "${version:="0.0.0"}"
 if [ "$version" = "0.0.0" ]; then
-    git_version=$(git describe --tags --abbrev=0 --match="rust-v[0-9]*" 2>/dev/null)
+    git_version=$(git describe --tags --abbrev=0 --match="rs-v[0-9]*" 2>/dev/null)
     if [ -z "$git_version" ]; then
-        echo "[WARN] No version tag found, using 0.0.0"
+        echo "Warning: No version tag found, using 0.0.0" >&2
     else
-        version=${git_version#rust-v}
+        version=${git_version#rs-v}
         sed -i "s|0.0.0|$version|g" Cargo.toml
     fi
 fi
 
-if [ -n "${args[*]}" ]; then
+if [ -n "$build_type" ]; then
     echo "Building in $build_type mode"
     cargo "${args[@]}" || exit 1
+fi
+
+if [ "$build_type" = "release" ]; then
+    mkdir -p build
+    mv target/x86_64-unknown-linux-gnu/release/i3switch build/i3switch || {
+        echo "Error: Failed to move binary to target directory" >&2
+        exit 1
+    }
 fi
 
 echo "Build completed successfully"

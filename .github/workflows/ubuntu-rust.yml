@@ -25,9 +25,8 @@ jobs:
         sudo apt-get install -y ruby ruby-dev build-essential
         gem install --user-install fpm
     - name: Package Rust binary
-      run: ./scripts/fpm_package_ci.sh rust rust/target/x86_64-unknown-linux-gnu/release/i3switch deb
+      run: ./scripts/fpm_package_ci.sh rust deb
     - name: Upload Rust debian package
       uses: actions/upload-artifact@v4
       with:
-        name: i3switch-rust.deb
-        path: i3switch-rust*.deb
+        path: i3switch-rs*.deb
