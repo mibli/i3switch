@@ -137,9 +137,12 @@ implementation, keeping track of changes, features, and bug fixes across languag
 
 ## Commit & Tag Conventions
 
-- **Commits**: Use a language prefix, e.g., `python: Add config file support`
-- **Release tags**: Use `python-vX.Y.Z`, `cpp-vX.Y.Z`, `rust-vX.Y.Z`
-- **Changelogs**: Generated from commit history between tags using these prefixes
+- **Commits**: Follow Structured Commit Messages
+  - **Format**: `<type>(<context>): <description>`
+    - **Type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+    - **Context**: Language prefix (e.g., `py`, `cpp`, `rs`)
+    - **Description**: lowercase summary of the change in the imperative mood
+  - **Example**: `feat(py): support config files`
 
 ---
 
@@ -161,8 +164,7 @@ These are for the sake of consistency and as a reminder of the projects principl
 
 ### Rules for Contributions
 
-- **Language Prefix**: Use the language prefix in commit messages (e.g., `python:`, `cpp:`,
-  `rust:`).
+- **Follow commit conventions**: Use structured commit messages to ensure clarity and consistency.
 - **Prefer minimal dependencies**: Especially in C++ and Rust, avoid unnecessary libraries.
 - **Follow coding conventions**: Each language has its own style guide, so please follow it.
 - **Document the code**: Don't use cat-like comments (don't repeat the code in comments). Think
