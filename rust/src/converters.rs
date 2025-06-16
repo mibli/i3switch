@@ -28,8 +28,8 @@ pub struct Window {
 /// This enum represents the layout type of a node in a window manager's tree structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Layout {
-    Directional,
-    Switchable,
+    AllVisible,
+    OneVisible,
     Skipped,
     Invalid,
 }
@@ -55,28 +55,20 @@ pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
 
     let layout = get_layout(node);
     match layout {
-        Layout::Directional => {
+        Layout::AllVisible => {
             let mut nodes: Vec<&'a Value> = vec![];
+            if let Some(floating_nodes) = node.get("floating_nodes").unwrap_or(&Value::Null).as_array() {
+                nodes.extend(floating_nodes.iter());
+            }
             node.get("nodes").unwrap().as_array().unwrap().iter().for_each(|subnode| {
                 nodes.extend(visible_nodes(subnode));
             });
             return nodes;
         }
-        Layout::Switchable => {
-            if is_content_node(node) {
-                if let Some(focused_node) = focused_subnode(node) {
-                    return visible_nodes(focused_node);
-                }
-            }
-
+        Layout::OneVisible => {
             let mut nodes: Vec<&'a Value> = vec![];
-            if let Some(floating_nodes) = node.get("floating_nodes").unwrap_or(&Value::Null).as_array() {
-                nodes.extend(floating_nodes.iter());
-            }
-            if let Some(subnodes) = node.get("nodes").unwrap_or(&Value::Null).as_array() {
-                for subnode in subnodes {
-                    nodes.extend(visible_nodes(subnode));
-                }
+            if let Some(focused_node) = focused_subnode(node) {
+                nodes.extend(visible_nodes(focused_node));
             }
             return nodes;
         }
@@ -223,12 +215,10 @@ fn focused_subnode(node: &Value) -> Option<&Value> {
 fn get_layout(node: &Value) -> Layout {
     let layout = node.get("layout").and_then(|l| l.as_str()).unwrap_or("");
     let node_type = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
-    if is_content_node(node) || node_type == "workspace" || node_type == "root" {
-        Layout::Switchable
-    } else if layout == "splith" || layout == "splitv" {
-        Layout::Directional
-    } else if layout == "stacked" || layout == "tabbed" || layout == "output" {
-        Layout::Switchable
+    if is_content_node(node) || layout == "stacked" || layout == "tabbed" {
+        Layout::OneVisible
+    } else if layout == "splith" || layout == "splitv" || layout == "output" || node_type == "workspace" || node_type == "root" {
+        Layout::AllVisible
     } else if layout == "dockarea" {
         Layout::Skipped
     } else {
@@ -263,7 +253,7 @@ fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
         let endnode = find_deepest_focused_tabbed(subnode);
         if endnode.is_some() {
             return endnode;
-        } else if get_layout(node) == Layout::Switchable {
+        } else if get_layout(node) == Layout::OneVisible {
             return Some(node);
         }
     }
@@ -336,11 +326,11 @@ mod tests {
                                         {
                                             "id": 4,
                                             "type": "con",
-                                            "layout": "tabbed",
+                                            "layout": "splith",
                                             "nodes": [
                                                 {
                                                     "id": 5,
-                                                    "focused": true,
+                                                    "focused": false,
                                                     "nodes": [],
                                                     "type": "con",
                                                     "focus": [],
@@ -348,14 +338,14 @@ mod tests {
                                                 },
                                                 {
                                                     "id": 6,
-                                                    "focused": false,
+                                                    "focused": true,
                                                     "nodes": [],
                                                     "type": "con",
                                                     "focus": [],
                                                     "rect": {"width": 100, "height": 100}
                                                 }
                                             ],
-                                            "focus": [5, 6],
+                                            "focus": [6, 5],
                                             "focused": false,
                                             "rect": {"width": 100, "height": 100}
                                         }
@@ -365,12 +355,12 @@ mod tests {
                                     "rect": {"width": 100, "height": 100}
                                 }
                             ],
-                            "focus": [2],
+                            "focus": [3],
                             "focused": false,
                             "rect": {"width": 100, "height": 100}
                         }
                     ],
-                    "focus": [1],
+                    "focus": [2],
                     "focused": false,
                     "rect": {"width": 100, "height": 100}
                 },
@@ -414,6 +404,14 @@ mod tests {
                                             "layout": "tabbed",
                                             "nodes": [
                                                 {
+                                                    "id": 14,
+                                                    "focused": false,
+                                                    "nodes": [],
+                                                    "type": "con",
+                                                    "focus": [],
+                                                    "rect": {"width": 100, "height": 100}
+                                                },
+                                                {
                                                     "id": 11,
                                                     "focused": false,
                                                     "nodes": [],
@@ -422,7 +420,7 @@ mod tests {
                                                     "rect": {"width": 100, "height": 100}
                                                 }
                                             ],
-                                            "focus": [11],
+                                            "focus": [11, 14],
                                             "focused": false,
                                         }
                                     ],
@@ -456,11 +454,11 @@ mod tests {
             "rect": {"width": 100, "height": 100}
         });
         let nodes = visible_nodes(&node);
-        assert_eq!(nodes.len(), 4);
         assert!(nodes.iter().any(|n| n["id"] == 5));
         assert!(nodes.iter().any(|n| n["id"] == 6));
         assert!(nodes.iter().any(|n| n["id"] == 11));
         assert!(nodes.iter().any(|n| n["id"] == 20));
+        assert_eq!(nodes.len(), 4);
     }
 
     /// Tests for extracting available tabs from a node.
@@ -590,37 +588,37 @@ mod tests {
                 {"id": 1, "type": "workspace", "layout": "splith", "nodes": []},
             ],
         });
-        assert_eq!(get_layout(&node), Layout::Switchable);
+        assert_eq!(get_layout(&node), Layout::OneVisible);
 
         let node = json!({
             "layout": "splith",
             "type": "workspace"
         });
-        assert_eq!(get_layout(&node), Layout::Switchable);
+        assert_eq!(get_layout(&node), Layout::AllVisible);
 
         let node = json!({
             "layout": "splith",
             "type": "con"
         });
-        assert_eq!(get_layout(&node), Layout::Directional);
+        assert_eq!(get_layout(&node), Layout::AllVisible);
 
         let node = json!({
             "layout": "splitv",
             "type": "con"
         });
-        assert_eq!(get_layout(&node), Layout::Directional);
+        assert_eq!(get_layout(&node), Layout::AllVisible);
 
         let node = json!({
             "layout": "tabbed",
             "type": "con"
         });
-        assert_eq!(get_layout(&node), Layout::Switchable);
+        assert_eq!(get_layout(&node), Layout::OneVisible);
 
         let node = json!({
             "layout": "stacked",
             "type": "con"
         });
-        assert_eq!(get_layout(&node), Layout::Switchable);
+        assert_eq!(get_layout(&node), Layout::OneVisible);
 
         let node = json!({
             "layout": "dockarea",

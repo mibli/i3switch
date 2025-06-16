@@ -25,8 +25,7 @@ while [ -n "$1" ]; do
         install)
             build_type=release
             args+=(install)
-            args+=(--release)
-            args+=(--root /usr/local)
+            args+=(--path .)
             args+=(--target x86_64-unknown-linux-gnu)
             ;;
         -h|--help|*)
