@@ -7,23 +7,13 @@ die() {
     exit 1
 }
 
-rust_arg="rust:rust/target/x86_64-unknown-linux-gnu/release/i3switch"
-python_arg="python:python/build/bin/i3switch"
-cpp_arg="cpp:cpp/build/i3switch"
-
 for i in "$@"; do
     case "$i" in
-        rust)
-            builds+=("$rust_arg")
-            ;;
-        python)
-            builds+=("$python_arg")
-            ;;
-        cpp)
-            builds+=("$cpp_arg")
+        rust|python|cpp)
+            builds+=( "$i" )
             ;;
         all)
-            builds+=("$rust_arg" "$python_arg" "$cpp_arg")
+            builds+=( rust python cpp )
             ;;
         rebuild)
             rebuild=rebuild
@@ -42,18 +32,14 @@ if [ ${#builds[@]} -eq 0 ]; then
 fi
 
 for build in "${builds[@]}"; do
-    build_dir=${build%%:*}
-    build_path=${build##*:}
-
-    echo "Building $build_dir..."
-
+    echo "Building $build..."
     (
-        cd "$build_dir" || die "Failed to change directory to $build_dir"
+        cd "$build" || die "Failed to change directory to $build"
         if ./build.sh -h | grep -q "test"; then
-            ./build.sh test || die "Failed to build tests for $build_dir"
+            ./build.sh test || die "Failed to build tests for $build"
         fi
-        ./build.sh release $rebuild || die "Failed to build $build_dir"
+        ./build.sh release $rebuild || die "Failed to build $build"
     ) && {
-        echo "Build for $build_dir completed successfully, output binary can be found at $build_path"
+        echo "Build for $build completed successfully, output binary can be found at $build/dist/i3switch"
     }
 done

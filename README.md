@@ -66,7 +66,7 @@ The root build script will output where the output binaries are located.
 You can also run the implementations directly from their directories:
 
 ```bash
-cd python && ./build.sh release && ./build/bin/i3switch
+cd python && ./build.sh release && ./dist/i3switch
 ```
 
 **Proper binary versioning require .git repository to be present and tags to be fetched.**
@@ -124,14 +124,23 @@ long prominent bugs present in the C++ implementation.
 
 ## Automation & CI/CD
 
-- TODO: **Automated changelog generation** and **binary builds** are handled by GitHub Actions.
-- TODO: Changelogs are generated from commit history using language prefixes.
+- Changelogs are generated from commit history from matching commits.
 - Versioning of binaries is handled by Git tags, e.g., `python-vX.Y.Z`, `cpp-vX.Y.Z`, `rust-vX.Y.Z`.
 
 ### Reproducibility
 
 With version tags and automated builds, you can always reproduce a specific release of any
 implementation, keeping track of changes, features, and bug fixes across languages.
+
+### Changelog Generation
+
+Changelogs are generated with git cliff from commit messages.
+
+To generate a changelog for a specific language implementation, run in git repository root:
+
+```bash
+git cliff --config=<LANG>/cliff.toml --output CHANGELOG.md
+```
 
 ---
 

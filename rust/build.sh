@@ -5,7 +5,7 @@ build_type=
 while [ -n "$1" ]; do
     case "$1" in
         rebuild)
-            rm -rf target
+            rm -rf target dist
             ;;
         debug)
             build_type=debug
@@ -53,9 +53,9 @@ if [ -n "$build_type" ]; then
 fi
 
 if [ "$build_type" = "release" ]; then
-    mkdir -p build
-    mv target/x86_64-unknown-linux-gnu/release/i3switch build/i3switch || {
-        echo "Error: Failed to move binary to target directory" >&2
+    mkdir -p dist
+    cp target/x86_64-unknown-linux-gnu/release/i3switch dist/i3switch || {
+        echo "Error: Failed to copy binary to target directory" >&2
         exit 1
     }
 fi

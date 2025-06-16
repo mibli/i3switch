@@ -5,7 +5,7 @@ install=false
 for i in "$@"; do
     case "$i" in
         rebuild)
-            rm -rf build i3switch.spec
+            rm -rf build i3switch.spec dist
             shift
             ;;
         debug)
@@ -50,7 +50,7 @@ done
 
 if [ -n "$build" ]; then
     echo "Building i3switch in $build mode..."
-    pyinstaller --onefile --name i3switch --distpath ./build/bin run.py || {
+    pyinstaller --onefile --name i3switch run.py || {
         echo "Error: Build failed." >&2
         exit 1
     }
@@ -58,16 +58,10 @@ fi
 
 if [ "$install" = true ] && [ -f "build/bin/i3switch" ]; then
     echo "Installing i3switch..."
-    sudo cp build/bin/i3switch /usr/local/bin/ || {
+    sudo cp dist/i3switch /usr/local/bin/ || {
         echo "Error: Installation failed." >&2
         exit 1
     }
-    exit 0
 fi
-
-mv build/bin/i3switch build/i3switch || {
-    echo "[ERROR] Moving binary failed." >&2
-    exit 1
-}
 
 echo "All tasks completed successfully."

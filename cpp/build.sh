@@ -5,7 +5,7 @@ install=
 for i in "$@"; do
     case "$i" in
         rebuild)
-            rm -rf build
+            rm -rf build dist
             mkdir -p build
             ;;
         debug)
@@ -50,6 +50,14 @@ if [ -n "$build_type" ]; then
         make -C build install
     fi
     set +e
+fi
+
+if [ "$build_type" = "Release" ]; then
+    mkdir -p dist
+    cp build/i3switch dist/i3switch || {
+        echo "Error: Failed to move i3switch to dist directory" >&2
+        exit 1
+    }
 fi
 
 echo "Build completed successfully"

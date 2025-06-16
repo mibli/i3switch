@@ -7,3 +7,4 @@ __pycache__
 python/dist
 python/build
 python/i3switch.spec
+/*/dist/

@@ -18,7 +18,7 @@ for language_long in "${!languages_short[@]}"; do
         conflict_flags+=( --conflicts "i3switch-${languages_short[$language_long]}" )
 done
 
-binary_path=$language/build/i3switch
+binary_path=$language/dist/i3switch
 if [[ ! -f "$binary_path" ]]; then
     echo "Error: Binary not found at $binary_path"
     exit 1
