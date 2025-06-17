@@ -51,22 +51,23 @@ Each implementation is self-contained, with its own dependencies, build instruct
 
 ## Building & Running
 
-Each implementation has it's own build.sh script, that is wrapped with root build.sh script.
-You can run the build script from the root directory to build selected implementation(s):
+Each implementation has it's own Makefile, default target will build a release binary.
 
 ```bash
-./build.sh python  # Build Python implementation
-./build.sh cpp     # Build C++ implementation
-./build.sh rust    # Build Rust implementation
-./build.sh all     # Build all implementations
-./build.sh all rebuild  # Rebuild all implementations
-```
+# Build one language release binary
+make -C python
+make -C cpp dist/i3switch
+make cpp/dist/i3switch
 
-The root build script will output where the output binaries are located.
-You can also run the implementations directly from their directories:
+# Build all release binaries
+make all
 
-```bash
-cd python && ./build.sh release && ./dist/i3switch
+# Build release binaries and packages
+# Note: For dependability version must match the current language version git tag.
+make i3switch_1.0.0-ubuntu_amd64.deb
+
+# Build changelog
+make rust/dist/CHANGELOG.md
 ```
 
 **Proper binary versioning require .git repository to be present and tags to be fetched.**

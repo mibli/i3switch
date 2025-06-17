@@ -22,9 +22,7 @@ Options:
 
 from docopt import docopt
 from . import controller
-
-
-VERSION = '1.1.0'
+from . import version
 
 
 def main(control):
@@ -42,7 +40,7 @@ def main(control):
 
 def entrypoint():
     """ Parses arguments and calls main() """
-    arguments = docopt(__doc__, version='i3switch ' + VERSION)
+    arguments = docopt(__doc__, version='i3switch ' + version.__version__)
 
     direction = None
     number = None
