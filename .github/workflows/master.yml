@@ -1,0 +1,73 @@
+name: Build and Package on Ubuntu
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        language: [cpp, python, rust]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
+    - name: Install dependencies
+      run: scripts/install_deps.sh ${{ matrix.language }}
+    - name: Binary build
+      run: make ${{ matrix.language }}/dist/i3switch
+    - name: Upload C++ binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: i3switch-${{ matrix.language }}
+        path: ${{ matrix.language }}/dist/i3switch
+  package:
+    strategy:
+      matrix:
+        language: [cpp, python, rust]
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
+    - name: Download binary artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: i3switch-${{ matrix.language }}
+        path: ${{ matrix.language }}/dist
+    - name: Install Ruby and fpm
+      run: ./scripts/install_deps.sh package
+    - name: Package binary
+      run: ./scripts/fpm_package_ci.sh ${{ matrix.language }} deb
+    - name: Upload debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: i3switch-${{ matrix.language }}-deb
+        path: "i3switch-${{ matrix.language }}*.deb"
+  changelog:
+    strategy:
+      matrix:
+        language: [cpp, python, rust]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all tags
+    - name: Get version pattern
+      run: echo "pattern=$(scripts/version.sh --pattern "${{ matrix.language }}")" >> $GITHUB_ENV
+    - name: Generate changelog
+      uses: orhun/git-cliff-action@v4
+      id: git-cliff
+      with:
+        config: ${{ matrix.language }}/cliff.toml
+        args: --tag-pattern "${{ env.pattern }}"
+    - name: Upload changelog
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.language }}-changelog
+        path: ${{ steps.git-cliff.outputs.changelog }}

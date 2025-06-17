@@ -1,10 +1,13 @@
-/src/i3switch/keyboard
-build
-.build/
-rust/target/
-rust/Cargo.lock
+# Cache files
 __pycache__
-python/dist
-python/build
-python/i3switch.spec
+rust/Cargo.lock
+
+# Build directories
+/rust/target/
+/python/i3switch.spec
 /*/dist/
+/*/build/
+
+# Generated files
+/python/i3switch/version.py
+/rust/Cargo.toml
