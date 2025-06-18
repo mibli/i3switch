@@ -5,7 +5,7 @@ use serde_json as json;
 
 mod planar;
 mod linear;
-mod connection;
+mod backend;
 mod navigation;
 mod converters;
 mod logging;
@@ -106,9 +106,9 @@ fn main() {
         .expect_log("Failed to get i3 socket path");
     let i3_path = String::from_utf8(i3_socket_path_output.stdout)
         .expect_log("Failed to parse i3 socket path output");
-    let mut client = connection::i3client::Client::new(&i3_path.trim())
+    let mut client = backend::i3::client::Client::new(&i3_path.trim())
         .expect_log("Failed to connect to i3 IPC server");
-    let tree = client.request(connection::i3client::Request::GetTree, "")
+    let tree = client.request(backend::i3::client::Request::GetTree, "")
         .expect_log("Failed to get i3 tree JSON");
 
     // Parse the i3 tree to get the current workspace and window information
@@ -136,7 +136,7 @@ fn main() {
     // Focus the window with the determined ID
     logging::info!("Focusing window with ID: {}", window_id);
     let payload = format!("[con_id={}] focus", window_id);
-    client.request(connection::i3client::Request::Command, &payload)
+    client.request(backend::i3::client::Request::Command, &payload)
         .expect_log("Failed to send focus command");
 
     std::process::exit(0);
