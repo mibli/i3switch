@@ -9,6 +9,7 @@ mod backend;
 mod navigation;
 mod converters;
 mod logging;
+mod types;
 
 use crate::logging::ResultExt;
 

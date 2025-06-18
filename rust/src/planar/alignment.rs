@@ -2,9 +2,8 @@
 /// specified directions.
 ///
 /// ```
-/// // TODO: Fix tests
 /// use i3switch::planar::alignment::{get_properties, next_in_direction, Direction, Relation};
-/// use i3switch::planar::rect::Rect;
+/// use i3switch::types::rect::Rect;
 ///
 /// let rects = vec![
 ///    Rect { x: 0, y: 0, w: 10, h: 10 },
@@ -19,7 +18,7 @@
 /// assert_eq!(next, Some(4));
 /// ```
 
-use crate::planar::Rect;
+use crate::types::Rect;
 use crate::logging;
 
 /// This enum is used to specify the direction in which the focus should be moved.
@@ -185,7 +184,7 @@ pub fn first_of_direction<'a>(rects: &'a [&Rect], current: &Rect, properties: &P
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::planar::Rect;
+    use crate::types::Rect;
 
     // In this test we check if the properties for each relation and direction correctly describe
     // the extents and direction comparison for a rectangle with coordinates for the left top
