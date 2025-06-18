@@ -1,13 +1,8 @@
-use crate::planar::Rect;
+use crate::types::Rect;
+use crate::types::Window;
 use crate::planar::Relation;
 use crate::planar::Direction;
 use crate::planar::alignment;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Window {
-    pub id: u64,
-    pub rect: Rect,
-}
 
 pub struct Arrangement {
     pub windows:  Vec<Window>,

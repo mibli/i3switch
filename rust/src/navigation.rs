@@ -1,3 +1,4 @@
+use crate::backend;
 use crate::converters;
 use crate::linear;
 use crate::planar;
@@ -62,8 +63,8 @@ pub fn get_window_of_number(tree: &json::Value, number: usize) -> u64 {
 /// If there are focused floating windows, it will return the sequence of those windows.
 /// Otherwise, it will return the sequence of available tabs in the current workspace.
 fn get_linear_sequence(tree: &json::Value) -> linear::Sequence {
-    let visible_nodes = converters::visible_nodes(tree);
-    let windows = converters::to_windows(visible_nodes);
+    let visible_nodes = backend::i3::compass::visible_nodes(tree);
+    let windows = backend::i3::compass::to_windows(visible_nodes);
     let mut floating = converters::floating(&windows);
 
     logging::debug!("Floating windows: {:?}", floating);
@@ -74,8 +75,8 @@ fn get_linear_sequence(tree: &json::Value) -> linear::Sequence {
         converters::as_sequence(&floating)
     } else {
         logging::debug!("Using available tabs for linear sequence.");
-        let nodes = converters::available_tabs(tree);
-        let windows = converters::to_windows(nodes);
+        let nodes = backend::i3::compass::available_tabs(tree);
+        let windows = backend::i3::compass::to_windows(nodes);
         converters::as_sequence(&windows)
     }
 }
@@ -84,8 +85,8 @@ fn get_linear_sequence(tree: &json::Value) -> linear::Sequence {
 /// If there are focused floating windows, it will return the arrangement of those windows.
 /// Otherwise, it will return the arrangement of visible windows in the current workspace.
 fn get_planar_arrangement(tree: &json::Value) -> planar::Arrangement {
-    let visible_nodes = converters::visible_nodes(tree);
-    let windows = converters::to_windows(visible_nodes);
+    let visible_nodes = backend::i3::compass::visible_nodes(tree);
+    let windows = backend::i3::compass::to_windows(visible_nodes);
     let floating = converters::floating(&windows);
 
     // TODO: Consider allowing directional movement in mixed mode (floating + tiled).
