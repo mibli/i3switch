@@ -1,4 +1,4 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "256"] // Required for tests with older serde_json
 use clap::{Parser, ValueEnum, Subcommand, ArgAction};
 use std::process;
 use serde_json as json;
@@ -48,14 +48,14 @@ enum RootCommand {
     /// Switch focus to a specific tab/window number
     Number {
         /// The tab/window number to switch focus to
-        #[clap(value_parser)]
+        #[clap(value_parser, value_name="num")]
         number: u32,
     },
 }
 
 /// Define the wrap option for focus switching
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-#[clap(rename_all = "lower", required = false)]
+#[clap(rename_all = "lower")]
 enum WrapOption {
     /// Enable wrap around
     Wrap,
