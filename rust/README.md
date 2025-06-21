@@ -3,7 +3,7 @@
 ### Requirements
 
 Requirements will be usually managed by cargo itself, unless distribution is known
-to manage Rust dependencies with packages manager, and `.cargo/config.<DISTRO>.toml`
+to manage Rust dependencies with packages manager, and `.cargo/config.<CODENAME>.toml`
 is available for that system.
 
 #### Debian Bookworm
@@ -16,6 +16,13 @@ To install requirements on debian bookworm, we use the package manager:
         librust-log-dev        \
         librust-serde-json-dev \
         librust-simplelog-dev
+
+#### Adding dependency restrictions
+
+If target distro manages Rust packages and building with crates.io is not preferred,
+a new restriction can be added by creating `.cargo/config.<SYSTEM_IDENTIFIER>.toml`
+and extending `Makefile` `.cargo/config.toml` target with condition for the distro,
+then documenting in a matching Requirements section in this README.
 
 ### Build
 
