@@ -1,6 +1,7 @@
 # Cache files
 __pycache__
 rust/Cargo.lock
+*.swp
 
 # Build directories
 /rust/target/
@@ -11,3 +12,4 @@ rust/Cargo.lock
 # Generated files
 /python/i3switch/version.py
 /rust/Cargo.toml
+/rust/.cargo/config.toml

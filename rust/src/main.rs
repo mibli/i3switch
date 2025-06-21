@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum, Subcommand};
+use clap::{Parser, ValueEnum, Subcommand, ArgAction};
 use std::process;
 use serde_json as json;
 
@@ -13,20 +13,14 @@ use crate::logging::ResultExt;
 
 /// i3switch - A simple command-line utility to switch focus in i3 window manager
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[clap(author, version, about, long_about = None)]
 struct Cli {
     /// Root command for focus switching
-    #[command(subcommand)]
+    #[clap(subcommand)]
     root_command: RootCommand,
 
     /// Wrap around when reaching the edge of the workspace
-    #[arg(
-        value_enum,
-        action = clap::ArgAction::Set,
-        default_value_t = WrapOption::NoWrap,
-        required = false,
-        global = true
-    )]
+    #[clap(arg_enum, action=ArgAction::Set, default_value = "nowrap", global = true)]
     wrap: WrapOption,
 }
 
@@ -53,18 +47,18 @@ enum RootCommand {
     /// Switch focus to a specific tab/window number
     Number {
         /// The tab/window number to switch focus to
-        #[arg(value_name = "num", required = true)]
+        #[clap(value_parser)]
         number: u32,
     },
 }
 
 /// Define the wrap option for focus switching
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+#[clap(rename_all = "lower", required = false)]
 enum WrapOption {
     /// Enable wrap around
     Wrap,
     /// Disable wrap around
-    #[value(name = "nowrap")]
     NoWrap,
 }
 
