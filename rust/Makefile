@@ -4,8 +4,16 @@ SOURCE_FILES := $(shell find src -name '*.rs')
 ROOT_DIR := $(shell realpath ..)
 VERSION := $(shell $(ROOT_DIR)/scripts/version.sh rs)
 .DEFAULT_GOAL := all
+OS_CODENAME=$(shell sed -e '/^VERSION_CODENAME/!d' -e 's/^.*=//' /etc/os-release)
 
-Cargo.toml: Cargo.toml.in
+.cargo/config.toml:
+ifeq ($(OS_CODENAME),bookworm)
+	ln -s config.bookworm.toml .cargo/config.toml
+else
+	echo > .cargo/config.toml
+endif
+
+Cargo.toml: Cargo.toml.in .cargo/config.toml
 	@echo "i3switch version: $(VERSION)"
 	sed "s|0.0.0|$(VERSION)|" Cargo.toml.in > Cargo.toml
 
@@ -33,6 +41,9 @@ all: dist/i3switch
 clean:
 	rm -rf dist
 	rm -rf target
+	rm -f Cargo.toml
+	rm -f Cargo.lock
+	rm -f .cargo/config.toml
 
 .PHONY: install
 install: target/release/i3switch
