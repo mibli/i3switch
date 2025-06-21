@@ -1,53 +1,30 @@
-# i3switch – Multi-language Implementations
+# i3switch - Intuitive i3 Window Switching Utility
 
-The project started due to personal frustration with i3 window manager's switching controls,
-and ideas for improving the experience. The most notable issues were:
+We pick tiled window managers to improve our productivity. They allow us to lay out the workspace
+in a way that we can see all the necessary information at a glance. This is the superpower of
+tiled window managers. And the switching mechanism should follow this mindset. We want to switch
+quickly to our layed out windows quickly, intuitively and efficiently.
 
-- To switch tabs, You had to select the parent container (sometimes multiple times),
-  which, while deterministic, was cumbersome and dated.
-- Direction based switching would often lead to unexpected results, especially with
-  multiple containers.
-- Often, when switching directionally, the focus would jump to a hidden container, namely
-  tabs and stack containers, which would lead to confusion and frustration.
+This is what i3switch is all about. It allows You to switch to what You see, without the necessary
+abstraction of the manual tiling structure.
 
-The first issue was the easiest to solve, as You could search i3 tree for the focused window
-and find the parent tabbed container. This is the feature that I was using since I've started
-the project and never looked back.
+For more history and motivation, see [history.md](docs/history.md).
 
-The second and third issues required consideration of multiple display setups, and
-understanding of i3 tree structure quirks, which is not exactly intuitive. However,
-this is understandable, due to the architecture of i3 and all of its features.
+## Preview
 
-## Multiple languages
+Preview demonstrates directional switching (without touching active tabs) and tab navigation
+(preserving focused window in the selected tab).
 
-With interest in developing my skills I've decided to implement the same functionality
-in multiple languages: Python, C++, and Rust. Each implementation has its own strengths and
-weaknesses, and serves as a learning experience for both the developer and users.
+![Preview](docs/media/preview.gif)]
 
-Due to the nature of multiple implementations, it's infeasible to expect to maintain
-exact similarity and feature parity across all languages. Consider **Rust implementation as the most
-complete** and feature-rich, with C++ being the second, and Python as a reference implementation.
+## Features
 
-### Why Multiple Languages?
-
-- **Educational value**: Demonstrates tradeoffs and idioms across ecosystems.
-- **Practical insight**: Shows why certain languages are more suitable for certain tasks (e.g., startup time, memory use).
-- **Portfolio**: Demonstrates adaptability and cross-language expertise.
-
-## Project Structure
-
-```
-i3switch/
-├── python/      # Python implementation
-├── cpp/         # C++ implementation
-├── rust/        # Rust implementation
-├── scripts/     # Shared scripts (e.g., changelog generation, builds)
-├── .github/
-│   └── workflows/  # CI/CD automation (changelog, builds, releases)
-└── README.md    # This file
-```
-
-Each implementation is self-contained, with its own dependencies, build instructions, and documentation.
+* **Directional Switching**: Switch to the next window VISIBLE window in the specified direction.
+* **Tab Navigation**: Switch to the next window in the current tabbed container.
+* **Tab Number Switching**: Switch to the specified tab number in the current tabbed container.
+* **Floating Switching**: Switch between floating windows in the direction or windows-like tab
+  navigation.
+* **Multi-Monitor Support**: Switch windows across multiple monitors, respecting their layout.
 
 ## Building & Running
 
@@ -64,7 +41,7 @@ make all
 
 # Build release binaries and packages
 # Note: For dependability version must match the current language version git tag.
-make i3switch_1.0.0-ubuntu_amd64.deb
+make i3switch-rs_1.0.0-ubuntu_amd64.deb
 
 # Build changelog
 make rust/dist/CHANGELOG.md
@@ -72,54 +49,28 @@ make rust/dist/CHANGELOG.md
 
 **Proper binary versioning require .git repository to be present and tags to be fetched.**
 
----
+## Project Structure
 
-## Language Notes & Motivation
+```
+i3switch/
+├── python/      # Python implementation
+├── cpp/         # C++ implementation
+├── rust/        # Rust implementation
+├── scripts/     # Shared scripts (e.g., changelog generation, builds)
+├── .github/
+│   └── workflows/  # CI/CD automation (changelog, builds, releases)
+└── README.md    # This file
+```
 
-### Python
+Each implementation is self-contained, with its own dependencies, build instructions, and documentation.
 
-Initial implementation in Python resembled the current i3switch, however after trying to use it
-in i3, it was found to be **too slow** for frequent CLI invocation. The new Python implementation
-relies on i3-msg calls for switching and tries to bind shortcuts, to run as a background daemon.
-This implementation didn't allow for much flexibility in terms of i3 configuration, so it was
-decided to implement the same functionality in C++.
+## Getting Started
 
-- Fastest for prototyping and learning.
-- **Not optimal for frequent CLI invocation** due to slow startup (e.g., for i3 utilities).
-- Maintained as a reference implementation and for language comparison.
-- Great portability and dependency management.
-- Distribution requires Python interpreter and dependencies, which may not be available in all
-  environments.
+See each subdirectory for build/run instructions:
 
-### C++
-
-This was the first implementation that was **fast enough** for frequent CLI invocation. It required
-a major restructuring that allowed for proper geometric based window switching. To ensure it's
-responsiveness, it implements it's own i3 tree navigation, that's designed to reduce copying and
-allocation overhead.
-
-- Near-instant startup, low memory, suitable for system utilities.
-- Classic choice for high-performance, resource-sensitive tasks.
-- Available in most environments, making it easy to integrate.
-- Requires careful memory management, but provides fine-grained control over performance.
-- Implies mindfulness about dependencies and portability, as it may not be available in all
-  environments.
-- Distribution requires C++ libraries, which may not be available in all environments.
-
-### Rust
-
-The Rust implementation was added to explore modern systems programming paradigms and memory safety.
-It tightly resembles the C++ implementation, but uses Rust's ownership model to ensure memory
-safety. Additionally the simplicity of Rust testing and build system allowed to find and fix
-long prominent bugs present in the C++ implementation.
-
-- Modern, memory-safe, zero-cost abstraction.
-- Comparable performance to C++, with additional compile-time safety.
-- Great for learning Rust's systems programming features.
-- Excellent for building robust, strongly tested applications.
-- Crates enable robust system for extending language capabilities, which encourages small, focused
-  libraries.
-- Distribution can be simplified with Cargo, but requires Rust toolchain to be installed.
+- [python/README.md](python/README.md)
+- [cpp/README.md](cpp/README.md)
+- [rust/README.md](rust/README.md)
 
 ---
 
@@ -143,69 +94,9 @@ To generate a changelog for a specific language implementation, run in git repos
 git cliff --config=<LANG>/cliff.toml --output CHANGELOG.md
 ```
 
----
-
-## Commit & Tag Conventions
-
-- **Commits**: Follow Structured Commit Messages
-  - **Format**: `<type>(<context>): <description>`
-    - **Type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-    - **Context**: Language prefix (e.g., `py`, `cpp`, `rs`)
-    - **Description**: lowercase summary of the change in the imperative mood
-  - **Example**: `feat(py): support config files`
-
----
-
-## Getting Started
-
-See each subdirectory for build/run instructions:
-
-- [python/README.md](python/README.md)
-- [cpp/README.md](cpp/README.md)
-- [rust/README.md](rust/README.md)
-
----
-
 ## Contribution
 
-Contributions welcome!
-Please follow the guidelines below, and feel free to open issues or pull requests.
-These are for the sake of consistency and as a reminder of the projects principles.
-
-### Rules for Contributions
-
-- **Follow commit conventions**: Use structured commit messages to ensure clarity and consistency.
-- **Prefer minimal dependencies**: Especially in C++ and Rust, avoid unnecessary libraries.
-- **Follow coding conventions**: Each language has its own style guide, so please follow it.
-- **Document the code**: Don't use cat-like comments (don't repeat the code in comments). Think
-  about what is not obvious and try to explain the problem that the code solves.
-- **Test your changes**: Ensure your changes are tested, especially in Rust and C++.
-- **State the purpose of your changes**: In the commit message, explain what your change does
-  and why it is needed.
-- **Keep existing functionality intact**: If you are adding new features, ensure that existing
-  functionality is not broken.
-- **Write code from the usability perspective**: Start from the higher-level features and
-  abstraction, this will make the code descriptive and easy to understand. Even if the details
-  will force You to produce multiple prototypes, the result will be more satisfactory.
-- **Doxygen is not welcome**: I make the rules here. And my personal opinion is that it
-  while being useful for large projects, results in cluttered code and sloppily written
-  description of the code.
-
-### Project Paradigms
-
-- KISS (Keep It Simple, Stupid): Focus on simplicity and clarity (as much as possible, because i3
-  tree navigation is a noodle).
-- DRY (Don't Repeat Yourself): Avoid duplication, especially in i3 tree navigation logic.
-- YAGNI (You Aren't Gonna Need It): Don't add features until they are needed – this is a utility,
-  not a framework.
-- !SOLID is NOT welcome!: This project is not meant to be a complex, object-oriented system.
-  It is a simple utility that should be easy to understand and maintain. Although some of it's
-  principles are still recommended, such as interface segregation and dependency inversion,
-  which ensure layered architecture and separation of concerns.
-- **Linux Philosophy**: Small, single-purpose tools that can be combined to achieve complex tasks –
-  This project is not meant to be a swiss army knife.
-
----
+Contributions are welcome! Please see [docs/contribute.md](docs/contribute.md) for guidelines.
 
 ## License
 
