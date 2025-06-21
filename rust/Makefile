@@ -31,7 +31,7 @@ dist/i3switch: target/x86_64-unknown-linux-gnu/release/i3switch
 	cp target/x86_64-unknown-linux-gnu/release/i3switch dist/
 
 .PHONY: test
-test: $(SOURCE_FILES)
+test: Cargo.toml $(SOURCE_FILES)
 	cargo test
 
 .PHONY: all

@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 use clap::{Parser, ValueEnum, Subcommand, ArgAction};
 use std::process;
 use serde_json as json;
