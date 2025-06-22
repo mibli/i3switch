@@ -26,6 +26,32 @@ Preview demonstrates directional switching (without touching active tabs) and ta
   navigation.
 * **Multi-Monitor Support**: Switch windows across multiple monitors, respecting their layout.
 
+## Getting Started
+
+To get started compile and install the i3switch binary.
+
+```
+make -C rust
+sudo make -C rust install
+```
+
+Make sure You have the path to the i3switch binary in Your `$PATH`. You can check this by running:
+
+```bash
+which i3switch
+```
+
+Then modify Your i3 config file to bind the commands to keybindings. For example:
+
+```
+bindsym $mod+h exec i3switch left
+bindsym $mod+j exec i3switch down
+bindsym $mod+k exec i3switch up
+bindsym $mod+l exec i3switch right
+bindsym $mod+Tab exec i3switch next wrap
+bindsym $mod+Shift+Tab exec i3switch prev wrap
+```
+
 ## Building & Running
 
 Each implementation has it's own Makefile, default target will build a release binary.
@@ -64,7 +90,7 @@ i3switch/
 
 Each implementation is self-contained, with its own dependencies, build instructions, and documentation.
 
-## Getting Started
+## Implementation Documentation
 
 See each subdirectory for build/run instructions:
 
