@@ -1,4 +1,4 @@
-use crate::backend::traits::{GetVisible, GetTabs, SetFocus};
+use crate::backend::traits::*;
 use crate::logging::ResultExt;
 use crate::logging;
 use crate::types::Windows;
@@ -36,16 +36,16 @@ impl Backend {
 }
 
 impl GetTabs for Backend {
-    fn get_tabs(&self) -> Windows {
+    fn get_tabs(&self) -> Result<Windows, String> {
         let nodes = compass::available_tabs(&self.root);
-        compass::to_windows(nodes)
+        Ok(compass::to_windows(nodes))
     }
 }
 
 impl GetVisible for Backend {
-    fn get_visible(&self) -> Windows {
+    fn get_visible(&self) -> Result<Windows, String> {
         let nodes = compass::visible_nodes(&self.root);
-        compass::to_windows(nodes)
+        Ok(compass::to_windows(nodes))
     }
 }
 

@@ -9,8 +9,7 @@ mod planar;
 mod types;
 mod cli;
 
-use crate::backend::i3;
-use crate::backend::traits::SetFocus;
+use crate::backend::*;
 
 fn main() {
     // Initialize logging
@@ -20,7 +19,7 @@ fn main() {
 
     let wrap = cli::wrap(&cli);
 
-    let mut backend = i3::Backend::new();
+    let mut backend = Backend::new(UsedBackend::I3(I3Backend::new()));
 
     // Determine the window ID to switch focus to based on the command
     let window_id: u64;

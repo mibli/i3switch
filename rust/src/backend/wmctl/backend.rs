@@ -4,7 +4,7 @@ use x11rb::rust_connection::RustConnection;
 use x11rb::protocol::xproto::ClientMessageEvent;
 
 use libwmctl::prelude::{windows, active, State};
-use crate::backend::traits::{GetVisible, SetFocus};
+use crate::backend::traits::*;
 use crate::types::{Rect, Window, Windows};
 
 pub struct Backend {
@@ -13,7 +13,7 @@ pub struct Backend {
 }
 
 impl Backend {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let show_hidden = false;
         let wm_windows = windows(show_hidden)
             .expect("Failed to connect to the window manager");
@@ -24,7 +24,7 @@ impl Backend {
         let windows = wm_windows.iter()
             .inspect(|w| {
                 visibility.push(is_visible(&w.state()
-                        .expect("Failed to get window state")));
+                    .expect("Failed to get window state")));
             })
             .map(|w| {
                 let wm_win_geometry = w.geometry()
@@ -47,13 +47,22 @@ impl Backend {
             })
             .collect::<Windows>();
 
-        Backend { windows, visibility }
+        Self {
+            windows: windows,
+            visibility: visibility,
+        }
+    }
+}
+
+impl GetTabs for Backend {
+    fn get_tabs(&self) -> Result<Windows, String> {
+        Err("Tabs not supported in this backend".to_string())
     }
 }
 
 impl GetVisible for Backend {
-    fn get_visible(&self) -> Windows {
-        self.windows.iter()
+    fn get_visible(&self) -> Result<Windows, String> {
+        Ok(self.windows.iter()
             .enumerate()
             .filter_map(|(i, window)| {
                 if self.visibility[i] {
@@ -62,7 +71,7 @@ impl GetVisible for Backend {
                     None
                 }
             })
-            .collect()
+            .collect())
     }
 }
 

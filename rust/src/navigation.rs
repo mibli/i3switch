@@ -61,7 +61,8 @@ pub fn get_window_of_number<B: GetVisible + GetTabs>(backend: &B, number: usize)
 /// If there are focused floating windows, it will return the sequence of those windows.
 /// Otherwise, it will return the sequence of available tabs in the current workspace.
 fn get_linear_sequence<B: GetVisible + GetTabs>(backend: &B) -> linear::Sequence {
-    let windows = backend.get_visible();
+    let windows = backend.get_visible()
+        .expect("Failed to get visible windows from backend");
     let mut floating = converters::floating(&windows);
 
     logging::debug!("Floating windows: {:?}", floating);
@@ -72,7 +73,8 @@ fn get_linear_sequence<B: GetVisible + GetTabs>(backend: &B) -> linear::Sequence
         converters::as_sequence(&floating)
     } else {
         logging::debug!("Using available tabs for linear sequence.");
-        let windows = backend.get_tabs();
+        let windows = backend.get_tabs()
+            .expect("Failed to get tabs from backend");
         converters::as_sequence(&windows)
     }
 }
@@ -81,7 +83,8 @@ fn get_linear_sequence<B: GetVisible + GetTabs>(backend: &B) -> linear::Sequence
 /// If there are focused floating windows, it will return the arrangement of those windows.
 /// Otherwise, it will return the arrangement of visible windows in the current workspace.
 fn get_planar_arrangement<B: GetVisible>(backend: &B) -> planar::Arrangement {
-    let windows = backend.get_visible();
+    let windows = backend.get_visible()
+        .expect("Failed to get visible windows from backend");
     let floating = converters::floating(&windows);
 
     if converters::any_focused(&floating) {
