@@ -1,3 +1,3 @@
 pub mod backend;
 
-use crate::backend::wmctl::backend::Backend;
+pub use crate::backend::wmctl::backend::Backend;
