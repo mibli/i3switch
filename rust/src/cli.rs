@@ -61,6 +61,10 @@ pub struct Cli {
     /// Wrap around when reaching the edge of the workspace
     #[clap(arg_enum, action=ArgAction::Set, default_value = "nowrap", global = true)]
     wrap: WrapOption,
+
+    /// Wrap around when reaching the edge of the workspace
+    #[clap(arg_enum, action=ArgAction::Set, default_value = "i3", global = true)]
+    pub backend: BackendOption,
 }
 
 /// Define the subcommand for switching focus to a specific tab/window number
@@ -99,4 +103,13 @@ enum WrapOption {
     Wrap,
     /// Disable wrap around
     NoWrap,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+#[clap(rename_all = "lower")]
+pub enum BackendOption {
+    /// Use the i3 IPC backend
+    I3,
+    /// Use the sway IPC backend
+    WmCtrl,
 }
