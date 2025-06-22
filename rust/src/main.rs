@@ -19,7 +19,18 @@ fn main() {
 
     let wrap = cli::wrap(&cli);
 
-    let mut backend = Backend::new(UsedBackend::I3(I3Backend::new()));
+    let mut backend: Backend;
+    let selected_backend = cli.backend;
+    match selected_backend {
+        cli::BackendOption::I3 => {
+            logging::info!("Using I3 backend.");
+            backend = Backend::new(UsedBackend::I3(I3Backend::new()));
+        }
+        cli::BackendOption::WmCtrl => {
+            logging::info!("Using WmCtrl backend.");
+            backend = Backend::new(UsedBackend::WmCtl(WmctlBackend::new()));
+        }
+    }
 
     // Determine the window ID to switch focus to based on the command
     let window_id: u64;

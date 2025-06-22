@@ -13,7 +13,7 @@ pub struct Backend {
 }
 
 impl Backend {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let show_hidden = false;
         let wm_windows = windows(show_hidden)
             .expect("Failed to connect to the window manager");
