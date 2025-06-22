@@ -1,17 +1,19 @@
 #![recursion_limit = "256"] // Required for tests with older serde_json
 use clap::{Parser, ValueEnum, Subcommand, ArgAction};
 use std::process;
-use serde_json as json;
 
-mod planar;
-mod linear;
 mod backend;
-mod navigation;
 mod converters;
+mod linear;
 mod logging;
+mod navigation;
+mod planar;
 mod types;
 
-use crate::logging::ResultExt;
+use crate::backend::i3;
+use crate::backend::traits::SetFocus;
+
+use clap::{Parser, ValueEnum, Subcommand};
 
 /// i3switch - A simple command-line utility to switch focus in i3 window manager
 #[derive(Parser, Debug)]
@@ -102,43 +104,27 @@ fn main() {
 
     let wrap = bool::from(cli.wrap);
 
-    // Establish a connection to the i3 IPC server and get the tree structure
-    let i3_socket_path_output = process::Command::new("i3").arg("--get-socketpath").output()
-        .expect_log("Failed to get i3 socket path");
-    let i3_path = String::from_utf8(i3_socket_path_output.stdout)
-        .expect_log("Failed to parse i3 socket path output");
-    let mut client = backend::i3::client::Client::new(&i3_path.trim())
-        .expect_log("Failed to connect to i3 IPC server");
-    let tree = client.request(backend::i3::client::Request::GetTree, "")
-        .expect_log("Failed to get i3 tree JSON");
-
-    // Parse the i3 tree to get the current workspace and window information
-    let tree = json::from_str::<json::Value>(&tree)
-        .expect_log("Failed to parse i3 tree JSON");
+    let mut backend = i3::Backend::new();
 
     // Determine the window ID to switch focus to based on the command
     let window_id: u64;
     if let Some(direction) = get_linear_direction(&cli.root_command) {
         logging::info!("Switching focus in linear direction: {:?}", direction);
-        window_id = navigation::get_window_to_switch_to(&tree, direction, wrap);
+        window_id = navigation::get_window_to_switch_to(&backend, direction, wrap);
     } else if let Some(direction) = get_planar_direction(&cli.root_command) {
         logging::info!("Switching focus in planar direction: {:?}", direction);
-        window_id = navigation::get_window_in_direction(&tree, direction, wrap);
+        window_id = navigation::get_window_in_direction(&backend, direction, wrap);
     } else if let RootCommand::Number { number } = &cli.root_command {
         logging::info!("Switching focus to window number: {}", number);
         if wrap {
             logging::warning!("Wrap option is ignored for number switching.");
         }
-        window_id = navigation::get_window_of_number(&tree, *number as usize);
+        window_id = navigation::get_window_of_number(&backend, *number as usize);
     } else {
         logging::critical!("Invalid command provided: {:?}", cli.root_command);
     }
 
-    // Focus the window with the determined ID
-    logging::info!("Focusing window with ID: {}", window_id);
-    let payload = format!("[con_id={}] focus", window_id);
-    client.request(backend::i3::client::Request::Command, &payload)
-        .expect_log("Failed to send focus command");
+    backend.set_focus(&window_id);
 
     std::process::exit(0);
 }
