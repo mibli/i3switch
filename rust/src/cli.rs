@@ -112,4 +112,6 @@ pub enum BackendOption {
     I3,
     /// Use the sway IPC backend
     WmCtrl,
+    /// Use the xcb backend
+    Xcb,
 }
