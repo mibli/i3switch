@@ -1,5 +1,6 @@
 pub mod i3;
 pub mod wmctl;
+pub mod xcb;
 pub mod traits;
 pub mod backend;
 

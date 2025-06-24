@@ -10,6 +10,7 @@ log = "0.4"
 serde_json = "1.0"
 simplelog = "0.12"
 x11rb = "0.13"
+xcb = "1"
 
 [dev-dependencies]
 ctor = "0.1"
