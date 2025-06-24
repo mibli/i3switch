@@ -1,5 +1,5 @@
 use super::client::Client;
-use crate::types::{Window, Windows};
+use crate::types::Windows;
 use crate::backend::traits::*;
 use xcb::Xid;
 use xcb::x::Window as XWindow;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 pub struct Backend {
     client: Client,
     windows: Windows,
-    xwindows: HashMap<u64, XWindow>,
+    xid_map: HashMap<u64, XWindow>,
 }
 
 impl Backend {
@@ -25,50 +25,35 @@ impl Backend {
             .expect("Failed to get active window");
 
         // Get the list of windows
-        let x_windows = client.get_client_list();
+        let xwindows = client.get_client_list();
 
-        // Get the list of windows
-        let rects = client.get_normalized_windows_rects(&x_windows);
-
-        // Get the list of properties for the windows
-        let properties = client.get_windows_properties(&x_windows);
-
-        // Get window withdrawn states
-        let withdrawns = client.get_windows_withdrawn(&x_windows);
-
-        // Create a map to hold the XWindow to u64 resource ID mapping
-        let mut xwindows: HashMap<u64, XWindow> = HashMap::new();
-
-        // Create the Windows structure
-        let windows: Windows = x_windows.iter()
-            .zip(rects.iter())
-            .zip(properties.iter())
-            .zip(withdrawns.iter())
-            .filter_map(|(((x_window, rect), properties), withdrawn)| {
-                println!("Properties are: {:?}", properties);
-                match client.is_visible(properties) && !withdrawn {
-                    false => return None, // Skip invisible windows
-                    true => {
-                        let window_id: u64 = x_window.resource_id().into();
-                        xwindows.insert(window_id.clone(), *x_window);
-                        Some(Window {
-                            id: window_id,
-                            rect: *rect,
-                            floating: client.is_floating(&properties),
-                            focused: *x_window == active_window,
-                        })
+        // Get the full window properties for each window
+        let mut xid_map: HashMap<u64, XWindow> = HashMap::new();
+        let mut windows = xwindows.into_iter()
+            .filter_map(|xwindow| {
+                // Fetch window info and add to the windows vector
+                let window = match client.fetch_window_info(&xwindow) {
+                    Ok(info) => info,
+                    Err(e) => {
+                        eprintln!("Failed to fetch window info for {}: {}", xwindow.resource_id(), e);
+                        return None;
                     }
-                }
+                };
+                xid_map.insert(xwindow.resource_id().into(), xwindow);
+                Some(window)
             })
-            .collect();
+            .collect::<Windows>();
 
-        // Log the windows
-        for window in &windows {
+        // Find the focused window
+        windows.iter_mut().for_each(|window| {
+            if xid_map[&window.id] == active_window {
+                window.focused = true;
+            }
             println!("Window ID: {}, Rect: {}, Floating: {}, Focused: {}",
                      window.id, window.rect.to_string(), window.floating, window.focused);
-        }
+        });
 
-        Backend { client, windows, xwindows }
+        Backend { client, windows, xid_map }
     }
 }
 
@@ -87,12 +72,12 @@ impl GetTabs for Backend {
 impl SetFocus for Backend {
     fn set_focus(&mut self, window_id: &u64) {
         // Check if the window ID exists in the map
-        if !self.xwindows.contains_key(window_id) {
+        if !self.xid_map.contains_key(window_id) {
             eprintln!("Window ID {} does not exist", window_id);
             return;
         }
         // Set focus to the specified window
-        self.client.set_focus(self.xwindows[window_id])
+        self.client.set_focus(self.xid_map[window_id])
             .expect("Failed to set focus");
     }
 }

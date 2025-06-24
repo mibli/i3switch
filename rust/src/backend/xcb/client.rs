@@ -1,5 +1,7 @@
 use xcb::{x, Connection};
+use xcb::Xid;
 use crate::types::Rect;
+use crate::types::Window;
 
 // Helper struct to initialize xcb atoms.
 // This helps initialize the atoms taking advantage of xcb concurrency.
@@ -15,6 +17,8 @@ xcb::atoms_struct! {
         pub _net_wm_state_maximized_vert => b"_NET_WM_STATE_MAXIMIZED_VERT",
         pub wm_state                     => b"WM_STATE",
         pub wm_state_withdrawn           => b"WM_STATE_WITHDRAWN",
+        pub wm_state_normal              => b"WM_STATE_NORMAL",
+        pub wm_state_iconic              => b"WM_STATE_ICONIC",
     }
 }
 
@@ -66,15 +70,13 @@ impl Client {
             &self.atoms._net_wm_state,
             &self.atoms._net_wm_state_maximized_horz,
             &self.atoms._net_wm_state_maximized_vert,
+            &self.atoms._net_wm_state_hidden,
         ] {
             if !supported_atoms.contains(&atom) {
-                let cookie = self.conn.send_request(&x::GetAtomName {
-                    atom: *atom,
-                });
-                let atom_name = self.conn.wait_for_reply(cookie)
-                    .map(|reply| reply.name().to_string())
-                    .unwrap_or_else(|_| "unknown".to_string());
-                return Err(format!("Required atom '{}' is not supported", atom_name));
+                return Err(format!(
+                    "Required atom '{}' is not supported",
+                    self.get_atom_name(*atom)?
+                ));
             }
         }
         Ok(())
@@ -97,7 +99,7 @@ impl Client {
         reply.value::<x::Window>().to_vec()
     }
 
-    pub fn get_active_window(&self) -> Option<x::Window> {
+    pub fn get_active_window(&self) -> Result<x::Window, String> {
         // Get the active window from the root window
         let cookie = self.conn.send_request(&x::GetProperty {
             delete: false,
@@ -108,143 +110,67 @@ impl Client {
             long_length: 1, // Only one active window
         });
 
-        match self.conn.wait_for_reply(cookie) {
-            Ok(reply) => {
-                if reply.length() > 0 {
-                    Some(reply.value::<x::Window>()[0])
-                } else {
-                    None
-                }
-            },
-            Err(_) => None,
+        let x_windows = self.conn.wait_for_reply(cookie)
+            .expect("Failed to get _NET_ACTIVE_WINDOW property")
+            .value::<x::Window>().to_vec();
+        match x_windows.first() {
+            Some(window) => Ok(*window),
+            None => Err("No active window found".to_string()),
         }
     }
 
-    pub fn get_normalized_windows_rects(&self, window_ids: &[x::Window]) -> Vec<Rect> {
-        let mut rects = self.get_windows_rects(window_ids);
-        // Translate rects to root window coordinates
-        let mut cookies = Vec::new();
-        for &window_id in window_ids {
-            cookies.push(self.conn.send_request(&x::TranslateCoordinates {
-                src_window: window_id,
-                dst_window: self.root,
-                src_x: 0,
-                src_y: 0,
-            }));
-        }
-        // Wait for all replies
-        let mut i: usize = 0;
-        for cookie in cookies {
-            match self.conn.wait_for_reply(cookie) {
-                Ok(reply) => {
-                    // Adjust the geometry based on the translation
-                    rects[i].x += reply.dst_x() as i32;
-                    rects[i].y += reply.dst_y() as i32;
-                },
-                Err(err) => {
-                    eprintln!("Failed to translate coordinates: {}", err);
-                }
-            }
-            i += 1;
-        }
-        rects
-    }
+    pub fn fetch_window_info(&self, window_id: &x::Window) -> Result<Window, String> {
+        // Request all necessary information about the window
+        // asynchronously to use xcb properly.
+        let cookies = (
+            self.request_geometry(window_id.clone()),
+            self.request_normalized_offset(window_id.clone()),
+            self.request_wm_state(window_id.clone()),
+            self.request_ewmh_state(window_id.clone()),
+        );
 
-    fn get_windows_rects(&self, window_ids: &[x::Window]) -> Vec<Rect> {
-        // Build requests for all window rects
-        let mut cookies = Vec::new();
-        for &window_id in window_ids {
-            cookies.push(self.conn.send_request(&x::GetGeometry {
-                drawable: x::Drawable::Window(window_id),
-            }));
-        }
-        // Wait for all replies
-        let mut rects = Vec::new();
-        for cookie in cookies {
-            match self.conn.wait_for_reply(cookie) {
-                Ok(reply) => {
-                    rects.push(Rect {
-                        x: reply.x() as i32,
-                        y: reply.y() as i32,
-                        w: reply.width() as i32,
-                        h: reply.height() as i32,
-                    });
-                },
-                Err(err) => {
-                    eprintln!("Failed to get geometry: {}", err);
-                }
-            }
-        }
-        rects
-    }
+        // Wait for all requests to complete
+        let replies = (
+            self.conn.wait_for_reply(cookies.0),
+            self.conn.wait_for_reply(cookies.1),
+            self.conn.wait_for_reply(cookies.2),
+            self.conn.wait_for_reply(cookies.3),
+        );
 
-    pub fn get_windows_withdrawn(&self, window_ids: &[x::Window]) -> Vec<bool> {
-        let cookies = window_ids.iter().map(|&window_id| {
-            self.conn.send_request(&x::GetProperty {
-                delete: false,
-                window: window_id,
-                property: self.atoms.wm_state,
-                r#type: x::ATOM_ANY,
-                long_offset: 0,
-                long_length: 1024,
-            })
-        }).collect::<Vec<_>>();
+        // Get geometry of the window
+        let mut rect = match replies.0 {
+            Ok(reply) => Rect::from(&reply),
+            Err(err) => return Err(format!("Failed to get window geometry: {}", err)),
+        };
 
-        let mut withdrawns = Vec::new();
-        for cookie in cookies {
-            let reply = self.conn.wait_for_reply(cookie)
-                .expect("Failed to get WM_STATE property");
-            println!("Reply length: {}", reply.length());
-            if reply.length() > 0 {
-                let state = reply.value::<x::Atom>()[0];
-                println!("Window state: {:?}", state);
-                withdrawns.push(state == self.atoms.wm_state_withdrawn);
-            } else {
-                withdrawns.push(false);
-            }
-        }
-        withdrawns
-    }
+        // Get the normalized offset of the window
+        match replies.1 {
+            Ok(reply) => translate_rect(&mut rect, &reply),
+            Err(err) => return Err(format!("Failed to translate coordinates: {}", err)),
+        };
 
-    pub fn get_windows_properties(&self, window_ids: &[x::Window]) -> Vec<Vec<x::Atom>> {
-        // Build requests to get properties for each window
-        let mut cookies = Vec::new();
-        for &window_id in window_ids {
-            cookies.push(self.conn.send_request(&x::GetProperty {
-                delete: false,
-                window: window_id,
-                property: self.atoms._net_wm_state,
-                r#type: x::ATOM_ATOM,
-                long_offset: 0,
-                long_length: 1024, // Number of properties to fetch
-            }));
+        // Match WM state
+        let wm_state = match replies.2 {
+            Ok(reply) => reply.value::<x::Atom>().to_vec(),
+            Err(err) => return Err(format!("Failed to get WM state: {}", err)),
+        };
+
+        // Match EWMH state
+        let ewmh_state = match replies.3 {
+            Ok(reply) => reply.value::<x::Atom>().to_vec(),
+            Err(err) => return Err(format!("Failed to get EWMH state: {}", err)),
+        };
+
+        if self.is_hidden(&wm_state, &ewmh_state) {
+            return Err("Skipping invisible window".to_string());
         }
 
-        // Wait for all replies and collect properties
-        let mut properties = Vec::new();
-        for cookie in cookies {
-            match self.conn.wait_for_reply(cookie) {
-                Ok(reply) => {
-                    properties.push(reply.value().to_vec());
-                },
-                Err(err) => {
-                    eprintln!("Failed to get properties: {}", err);
-                    properties.push(vec![]);
-                }
-            }
-        }
-        properties
-    }
-
-    pub fn is_floating(&self, properties: &Vec<x::Atom>) -> bool {
-        // Check if the window is floating
-        ! (properties.contains(&self.atoms._net_wm_state_maximized_horz.into()) ||
-            properties.contains(&self.atoms._net_wm_state_maximized_vert.into()))
-    }
-
-    pub fn is_visible(&self, properties: &Vec<x::Atom>) -> bool {
-        // Check if the window is visible
-        !properties.contains(&self.atoms._net_wm_state_hidden.into())
+        Ok(Window {
+            id: window_id.resource_id().into(),
+            rect: rect,
+            floating: self.is_floating(&ewmh_state),
+            focused: false, // Focus state will be set later
+        })
     }
 
     pub fn set_focus(&self, window_id: x::Window) -> Result<(), String> {
@@ -260,4 +186,90 @@ impl Client {
             Err(err) => Err(format!("Failed to set focus: {}", err)),
         }
     }
+
+    fn get_atom_name(&self, atom: x::Atom) -> Result<String, String> {
+        // Get the name of an atom
+        let cookie = self.conn.send_request(&x::GetAtomName {
+            atom: atom,
+        });
+        match self.conn.wait_for_reply(cookie) {
+            Ok(reply) => Ok(reply.name().to_string()),
+            Err(err) => Err(format!("Failed to get atom name: {}", err)),
+        }
+    }
+
+    fn request_normalized_offset(&self, src_window: x::Window)
+        -> x::TranslateCoordinatesCookie {
+        // Request to translate coordinates from one window to another
+        self.conn.send_request(&x::TranslateCoordinates {
+            src_window: src_window,
+            dst_window: self.root,
+            src_x: 0,
+            src_y: 0,
+        })
+    }
+
+    fn request_geometry(&self, window_id: x::Window)
+        -> x::GetGeometryCookie {
+        // Request to get the geometry of a window
+        self.conn.send_request(&x::GetGeometry {
+            drawable: x::Drawable::Window(window_id),
+        })
+    }
+
+    fn request_wm_state(&self, window_id: x::Window)
+        -> x::GetPropertyCookie {
+        // Request to get properties of a window
+        self.conn.send_request(&x::GetProperty {
+            delete: false,
+            window: window_id,
+            property: self.atoms.wm_state,
+            r#type: x::ATOM_ANY,
+            long_offset: 0,
+            long_length: 1024, // Number of properties to fetch
+        })
+    }
+
+    fn request_ewmh_state(&self, window_id: x::Window)
+        -> x::GetPropertyCookie {
+        // Request to get EWMH states of a window
+        self.conn.send_request(&x::GetProperty {
+            delete: false,
+            window: window_id,
+            property: self.atoms._net_wm_state,
+            r#type: x::ATOM_ATOM,
+            long_offset: 0,
+            long_length: 1024, // Number of properties to fetch
+        })
+    }
+
+    fn is_floating(&self, properties: &Vec<x::Atom>) -> bool {
+        // Check if the window is floating
+        return false; // Placeholder for floating logic
+        // ! (properties.contains(&self.atoms._net_wm_state_maximized_horz.into()) ||
+        //     properties.contains(&self.atoms._net_wm_state_maximized_vert.into()))
+    }
+
+    fn is_hidden(&self, wm_state: &Vec<x::Atom>, ewmh_state: &Vec<x::Atom>) -> bool {
+        wm_state.first().expect("WM_STATE is missing window state")
+            == &self.atoms.wm_state_withdrawn.into() ||
+            ewmh_state.contains(&self.atoms._net_wm_state_hidden.into())
+    }
+}
+
+impl From<&x::GetGeometryReply> for Rect {
+    fn from(reply: &x::GetGeometryReply) -> Self {
+        Rect {
+            x: reply.x() as i32,
+            y: reply.y() as i32,
+            w: reply.width() as i32,
+            h: reply.height() as i32,
+        }
+    }
+}
+
+fn translate_rect(rect: &mut Rect, translation: &x::TranslateCoordinatesReply) {
+    // Translate the rectangle coordinates based on the translation reply
+    rect.x += translation.dst_x() as i32;
+    rect.y += translation.dst_y() as i32;
 }
