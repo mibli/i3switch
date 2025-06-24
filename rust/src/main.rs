@@ -30,6 +30,10 @@ fn main() {
             logging::info!("Using WmCtrl backend.");
             backend = Backend::new(UsedBackend::WmCtl(WmctlBackend::new()));
         }
+        cli::BackendOption::Xcb => {
+            logging::info!("Using XCB backend.");
+            backend = Backend::new(UsedBackend::Xcb(XcbBackend::new()));
+        }
     }
 
     // Determine the window ID to switch focus to based on the command

@@ -1,11 +1,13 @@
 use crate::backend::i3;
 use crate::backend::wmctl;
+use crate::backend::xcb;
 use crate::backend::traits::*;
 use crate::types::Windows;
 
 pub enum UsedBackend {
     I3(i3::Backend),
     WmCtl(wmctl::Backend),
+    Xcb(xcb::Backend),
 }
 
 pub struct Backend {
@@ -25,6 +27,7 @@ impl GetTabs for Backend {
         match self.used_backend {
             UsedBackend::I3(ref i3) => i3.get_tabs(),
             UsedBackend::WmCtl(ref wmctl) => wmctl.get_tabs(),
+            UsedBackend::Xcb(ref xcb) => xcb.get_tabs(),
         }
     }
 }
@@ -34,6 +37,7 @@ impl GetVisible for Backend {
         match self.used_backend {
             UsedBackend::I3(ref i3) => i3.get_visible(),
             UsedBackend::WmCtl(ref wmctl) => wmctl.get_visible(),
+            UsedBackend::Xcb(ref xcb) => xcb.get_visible(),
         }
     }
 }
@@ -43,6 +47,7 @@ impl SetFocus for Backend {
         match self.used_backend {
             UsedBackend::I3(ref mut i3) => i3.set_focus(id),
             UsedBackend::WmCtl(ref mut wmctl) => wmctl.set_focus(id),
+            UsedBackend::Xcb(ref mut xcb) => xcb.set_focus(id),
         }
     }
 }
