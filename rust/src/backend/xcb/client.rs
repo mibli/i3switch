@@ -6,12 +6,15 @@ use crate::types::Rect;
 xcb::atoms_struct! {
     #[derive(Copy, Clone, Debug)]
     pub struct Atoms {
-        pub _NET_ACTIVE_WINDOW           => b"_NET_ACTIVE_WINDOW",
-        pub _NET_CLIENT_LIST             => b"_NET_CLIENT_LIST",
-        pub _NET_SUPPORTED               => b"_NET_SUPPORTED",
-        pub _NET_WM_STATE                => b"_NET_WM_STATE",
-        pub _NET_WM_STATE_MAXIMIZED_HORZ => b"_NET_WM_STATE_MAXIMIZED_HORZ",
-        pub _NET_WM_STATE_MAXIMIZED_VERT => b"_NET_WM_STATE_MAXIMIZED_VERT",
+        pub _net_active_window           => b"_NET_ACTIVE_WINDOW",
+        pub _net_client_list             => b"_NET_CLIENT_LIST",
+        pub _net_supported               => b"_NET_SUPPORTED",
+        pub _net_wm_state                => b"_NET_WM_STATE",
+        pub _net_wm_state_hidden         => b"_NET_WM_STATE_HIDDEN",
+        pub _net_wm_state_maximized_horz => b"_NET_WM_STATE_MAXIMIZED_HORZ",
+        pub _net_wm_state_maximized_vert => b"_NET_WM_STATE_MAXIMIZED_VERT",
+        pub wm_state                     => b"WM_STATE",
+        pub wm_state_withdrawn           => b"WM_STATE_WITHDRAWN",
     }
 }
 
@@ -47,7 +50,7 @@ impl Client {
         let cookie = self.conn.send_request(&x::GetProperty {
             delete: false,
             window: self.root,
-            property: self.atoms._NET_SUPPORTED,
+            property: self.atoms._net_supported,
             r#type: x::ATOM_ATOM,
             long_offset: 0,
             long_length: 1024, // Number of atoms to fetch
@@ -58,11 +61,11 @@ impl Client {
 
         // Check if all required atoms are supported
         for atom in [
-            &self.atoms._NET_ACTIVE_WINDOW,
-            &self.atoms._NET_CLIENT_LIST,
-            &self.atoms._NET_WM_STATE,
-            &self.atoms._NET_WM_STATE_MAXIMIZED_HORZ,
-            &self.atoms._NET_WM_STATE_MAXIMIZED_VERT,
+            &self.atoms._net_active_window,
+            &self.atoms._net_client_list,
+            &self.atoms._net_wm_state,
+            &self.atoms._net_wm_state_maximized_horz,
+            &self.atoms._net_wm_state_maximized_vert,
         ] {
             if !supported_atoms.contains(&atom) {
                 let cookie = self.conn.send_request(&x::GetAtomName {
@@ -82,7 +85,7 @@ impl Client {
         let cookie = self.conn.send_request(&x::GetProperty {
             delete: false,
             window: self.root,
-            property: self.atoms._NET_CLIENT_LIST,
+            property: self.atoms._net_client_list,
             r#type: x::ATOM_WINDOW,
             long_offset: 0,
             long_length: 1024, // Number of windows to fetch
@@ -99,7 +102,7 @@ impl Client {
         let cookie = self.conn.send_request(&x::GetProperty {
             delete: false,
             window: self.root,
-            property: self.atoms._NET_ACTIVE_WINDOW,
+            property: self.atoms._net_active_window,
             r#type: x::ATOM_WINDOW,
             long_offset: 0,
             long_length: 1, // Only one active window
@@ -117,8 +120,38 @@ impl Client {
         }
     }
 
-    pub fn get_windows_rects(&self, window_ids: &[x::Window]) -> Vec<Rect> {
-        // Build requests for all window geometries
+    pub fn get_normalized_windows_rects(&self, window_ids: &[x::Window]) -> Vec<Rect> {
+        let mut rects = self.get_windows_rects(window_ids);
+        // Translate rects to root window coordinates
+        let mut cookies = Vec::new();
+        for &window_id in window_ids {
+            cookies.push(self.conn.send_request(&x::TranslateCoordinates {
+                src_window: window_id,
+                dst_window: self.root,
+                src_x: 0,
+                src_y: 0,
+            }));
+        }
+        // Wait for all replies
+        let mut i: usize = 0;
+        for cookie in cookies {
+            match self.conn.wait_for_reply(cookie) {
+                Ok(reply) => {
+                    // Adjust the geometry based on the translation
+                    rects[i].x += reply.dst_x() as i32;
+                    rects[i].y += reply.dst_y() as i32;
+                },
+                Err(err) => {
+                    eprintln!("Failed to translate coordinates: {}", err);
+                }
+            }
+            i += 1;
+        }
+        rects
+    }
+
+    fn get_windows_rects(&self, window_ids: &[x::Window]) -> Vec<Rect> {
+        // Build requests for all window rects
         let mut cookies = Vec::new();
         for &window_id in window_ids {
             cookies.push(self.conn.send_request(&x::GetGeometry {
@@ -130,13 +163,12 @@ impl Client {
         for cookie in cookies {
             match self.conn.wait_for_reply(cookie) {
                 Ok(reply) => {
-                    let rect = Rect {
+                    rects.push(Rect {
                         x: reply.x() as i32,
                         y: reply.y() as i32,
                         w: reply.width() as i32,
                         h: reply.height() as i32,
-                    };
-                    rects.push(rect);
+                    });
                 },
                 Err(err) => {
                     eprintln!("Failed to get geometry: {}", err);
@@ -146,6 +178,34 @@ impl Client {
         rects
     }
 
+    pub fn get_windows_withdrawn(&self, window_ids: &[x::Window]) -> Vec<bool> {
+        let cookies = window_ids.iter().map(|&window_id| {
+            self.conn.send_request(&x::GetProperty {
+                delete: false,
+                window: window_id,
+                property: self.atoms.wm_state,
+                r#type: x::ATOM_ANY,
+                long_offset: 0,
+                long_length: 1024,
+            })
+        }).collect::<Vec<_>>();
+
+        let mut withdrawns = Vec::new();
+        for cookie in cookies {
+            let reply = self.conn.wait_for_reply(cookie)
+                .expect("Failed to get WM_STATE property");
+            println!("Reply length: {}", reply.length());
+            if reply.length() > 0 {
+                let state = reply.value::<x::Atom>()[0];
+                println!("Window state: {:?}", state);
+                withdrawns.push(state == self.atoms.wm_state_withdrawn);
+            } else {
+                withdrawns.push(false);
+            }
+        }
+        withdrawns
+    }
+
     pub fn get_windows_properties(&self, window_ids: &[x::Window]) -> Vec<Vec<x::Atom>> {
         // Build requests to get properties for each window
         let mut cookies = Vec::new();
@@ -153,7 +213,7 @@ impl Client {
             cookies.push(self.conn.send_request(&x::GetProperty {
                 delete: false,
                 window: window_id,
-                property: self.atoms._NET_WM_STATE,
+                property: self.atoms._net_wm_state,
                 r#type: x::ATOM_ATOM,
                 long_offset: 0,
                 long_length: 1024, // Number of properties to fetch
@@ -178,8 +238,13 @@ impl Client {
 
     pub fn is_floating(&self, properties: &Vec<x::Atom>) -> bool {
         // Check if the window is floating
-        ! (properties.contains(&self.atoms._NET_WM_STATE_MAXIMIZED_HORZ.into()) ||
-            properties.contains(&self.atoms._NET_WM_STATE_MAXIMIZED_VERT.into()))
+        ! (properties.contains(&self.atoms._net_wm_state_maximized_horz.into()) ||
+            properties.contains(&self.atoms._net_wm_state_maximized_vert.into()))
+    }
+
+    pub fn is_visible(&self, properties: &Vec<x::Atom>) -> bool {
+        // Check if the window is visible
+        !properties.contains(&self.atoms._net_wm_state_hidden.into())
     }
 
     pub fn set_focus(&self, window_id: x::Window) -> Result<(), String> {
