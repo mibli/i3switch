@@ -168,7 +168,7 @@ impl Client {
         Ok(Window {
             id: window_id.resource_id().into(),
             rect: rect,
-            floating: self.is_floating(&ewmh_state),
+            floating: self.is_floating(),
             focused: false, // Focus state will be set later
         })
     }
@@ -243,11 +243,8 @@ impl Client {
         })
     }
 
-    fn is_floating(&self, properties: &Vec<x::Atom>) -> bool {
-        // Check if the window is floating
+    fn is_floating(&self) -> bool {
         return false; // Placeholder for floating logic
-        // ! (properties.contains(&self.atoms._net_wm_state_maximized_horz.into()) ||
-        //     properties.contains(&self.atoms._net_wm_state_maximized_vert.into()))
     }
 
     fn is_hidden(&self, wm_state: &Vec<x::Atom>, ewmh_state: &Vec<x::Atom>) -> bool {

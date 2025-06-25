@@ -32,7 +32,7 @@ dist/i3switch: target/x86_64-unknown-linux-gnu/release/i3switch
 
 .PHONY: test
 test: Cargo.toml $(SOURCE_FILES)
-	cargo test
+	cargo test --all-features
 
 .PHONY: all
 all: dist/i3switch
