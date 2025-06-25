@@ -1,5 +1,6 @@
 use crate::planar;
 use crate::linear;
+use std::slice::Iter;
 
 macro_rules! die {
     ($code:expr, $format:expr $(, $args:expr)*) => {{
@@ -15,16 +16,24 @@ pub struct Cli {
     pub wrap: bool,
 }
 
-static HELP: &str = "
+// The help message will be built at runtime, because rust does not support
+// macro expansion in const contexts, and we want to use the `#[cfg]` attributes
+// to conditionally include backend options based on the features enabled.
+// This should not have a significant performance impact, as the help message is only
+// used when the user requests it, and it is built once at runtime.
+const HELP: &'static [&'static str] = &["
 i3switch - A simple command-line utility to switch focus in i3 window manager
 
 Usage: i3switch (<OPTION>|[<BACKEND>] <COMMAND> [wrap])
 
-Backends:
-  -i3           Use i3 backend (default)
-  -wm           Use wmctrl backend
-  -xcb          Use XCB backend
-
+Backends:\n",
+#[cfg(feature = "i3")]
+"  -i3           Use i3 backend (default)\n",
+#[cfg(feature = "wmctl")]
+"  -wm           Use wmctl backend\n",
+#[cfg(feature = "xcb")]
+"  -xcb          Use xcb backend\n",
+"
 Commands:
   next          Move focus to next tab/window
   prev          Move focus to previous tab/window
@@ -40,7 +49,7 @@ Arguments:
 Options:
   -h, --help    Print help (see a summary with '-h')
   -V, --version Print version
-";
+"];
 
 
 impl Cli {
@@ -67,8 +76,11 @@ impl Cli {
 
         let backend_arg = args.get(arg_index).map(|s| s.as_str());
         let backend = match backend_arg {
+            #[cfg(feature = "i3")]
             Some("-i3")  => Some(UseBackend::I3),
-            Some("-wm")  => Some(UseBackend::WmCtrl),
+            #[cfg(feature = "wmctl")]
+            Some("-wm")  => Some(UseBackend::WmCtl),
+            #[cfg(feature = "xcb")]
             Some("-xcb") => Some(UseBackend::Xcb),
             _            => None,
         };
@@ -113,7 +125,8 @@ impl Cli {
 
         // Any defaults we need to set
 
-        let backend = backend.unwrap_or(UseBackend::I3);
+        let backend = backend.unwrap_or(*UseBackend::iter().next()
+            .expect("At least one backend should be available"));
 
         Cli {
             backend,
@@ -123,8 +136,8 @@ impl Cli {
         }
     }
 
-    pub fn help() -> &'static str {
-        HELP
+    pub fn help() -> String {
+        HELP.join("")
     }
 
     pub fn linear_direction(&self) -> Option<linear::Direction> {
@@ -148,9 +161,26 @@ impl Cli {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UseBackend {
+    #[cfg(feature = "i3")]
     I3,
-    WmCtrl,
+    #[cfg(feature = "wmctl")]
+    WmCtl,
+    #[cfg(feature = "xcb")]
     Xcb,
+}
+
+impl UseBackend {
+    pub fn iter() -> Iter<'static, UseBackend> {
+        static BACKENDS: &[UseBackend] = &[
+            #[cfg(feature = "i3")]
+            UseBackend::I3,
+            #[cfg(feature = "wmctl")]
+            UseBackend::WmCtl,
+            #[cfg(feature = "xcb")]
+            UseBackend::Xcb,
+        ];
+        return BACKENDS.iter();
+    }
 }
 
 #[cfg(test)]
@@ -170,7 +200,7 @@ mod tests {
         let args = "i3switch -wm prev"
             .to_string().split_whitespace().map(String::from).collect();
         let cli = Cli::parse(args);
-        assert_eq!(cli.backend, UseBackend::WmCtrl);
+        assert_eq!(cli.backend, UseBackend::WmCtl);
         assert_eq!(cli.command, "prev");
         assert!(!cli.wrap);
         assert!(cli.number.is_none());

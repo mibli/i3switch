@@ -78,6 +78,7 @@ macro_rules! critical {
 }
 
 pub trait ResultExt<T, E> {
+    #[allow(dead_code)]
     fn expect_log(self, msg: &str) -> T;
 }
 
@@ -97,6 +98,7 @@ where
 }
 
 pub trait OptionExt<T> {
+    #[allow(dead_code)]
     fn wanted(self, msg: &str) -> Option<T>;
 }
 
