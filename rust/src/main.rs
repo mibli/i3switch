@@ -15,22 +15,21 @@ fn main() {
     // Initialize logging
     logging::init();
 
-    let cli = cli::get_parsed_command();
+    let cli = cli::Cli::parse(std::env::args().collect());
 
-    let wrap = cli::wrap(&cli);
+    let wrap = cli.wrap;
 
     let mut backend: Backend;
-    let selected_backend = cli.backend;
-    match selected_backend {
-        cli::BackendOption::I3 => {
+    match cli.backend {
+        cli::UseBackend::I3 => {
             logging::info!("Using I3 backend.");
             backend = Backend::new(UsedBackend::I3(I3Backend::new()));
         }
-        cli::BackendOption::WmCtrl => {
+        cli::UseBackend::WmCtrl => {
             logging::info!("Using WmCtrl backend.");
             backend = Backend::new(UsedBackend::WmCtl(WmctlBackend::new()));
         }
-        cli::BackendOption::Xcb => {
+        cli::UseBackend::Xcb => {
             logging::info!("Using XCB backend.");
             backend = Backend::new(UsedBackend::Xcb(XcbBackend::new()));
         }
@@ -38,20 +37,20 @@ fn main() {
 
     // Determine the window ID to switch focus to based on the command
     let window_id: u64;
-    if let Some(direction) = cli::linear_direction(&cli) {
+    if let Some(direction) = cli.linear_direction() {
         logging::info!("Switching focus in linear direction: {:?}", direction);
         window_id = navigation::get_window_to_switch_to(&backend, direction, wrap);
-    } else if let Some(direction) = cli::planar_direction(&cli) {
+    } else if let Some(direction) = cli.planar_direction() {
         logging::info!("Switching focus in planar direction: {:?}", direction);
         window_id = navigation::get_window_in_direction(&backend, direction, wrap);
-    } else if let Some(number) = cli::number(&cli) {
+    } else if let Some(number) = cli.number {
         logging::info!("Switching focus to window number: {}", number);
         if wrap {
             logging::warning!("Wrap option is ignored for number switching.");
         }
         window_id = navigation::get_window_of_number(&backend, number);
     } else {
-        logging::critical!("Invalid command provided: {:?}", cli);
+        unreachable!("No valid command provided. This should not happen.");
     }
 
     backend.set_focus(&window_id);

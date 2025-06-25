@@ -1,117 +1,202 @@
-use clap::{Parser, ValueEnum, Subcommand, ArgAction};
 use crate::planar;
 use crate::linear;
 
-// Public interface for the CLI module
-
-/// We cant use Cli::parse() directly in the main function because it requires
-/// the command line arguments to be passed in, which is not possible
-/// in a library context. Instead, we define this function to be used
-/// in the main function to parse the command line arguments.
-pub fn get_parsed_command() -> Cli {
-    Cli::parse()
+macro_rules! die {
+    ($code:expr, $format:expr $(, $args:expr)*) => {{
+        eprintln!($format $(, $args)*);
+        std::process::exit($code);
+    }};
 }
 
-/// Determine if the wrap option is enabled
-pub fn wrap(cli: &Cli) -> bool {
-    match cli.wrap {
-        WrapOption::Wrap => true,
-        WrapOption::NoWrap => false,
-    }
-}
-
-/// Convert the root command to a planar direction if applicable
-pub fn planar_direction(cli: &Cli) -> Option<planar::Direction> {
-    match cli.root_command {
-        RootCommand::Right => Some(planar::Direction::Right),
-        RootCommand::Down  => Some(planar::Direction::Down),
-        RootCommand::Left  => Some(planar::Direction::Left),
-        RootCommand::Up    => Some(planar::Direction::Up),
-        _ => None,
-    }
-}
-
-/// Convert the root command to a linear direction if applicable
-pub fn linear_direction(cli: &Cli) -> Option<linear::Direction> {
-    match cli.root_command {
-        RootCommand::Next => Some(linear::Direction::Next),
-        RootCommand::Prev => Some(linear::Direction::Prev),
-        _ => None,
-    }
-}
-
-/// Get the specific tab/window number to switch focus to if applicable
-pub fn number(cli: &Cli) -> Option<usize> {
-    match cli.root_command {
-        RootCommand::Number { number } => Some(number),
-        _ => None,
-    }
-}
-
-// Define the command-line interface (CLI) structure using Clap
-
-/// i3switch - A simple command-line utility to switch focus in i3 window manager
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
 pub struct Cli {
-    /// Root command for focus switching
-    #[clap(subcommand)]
-    root_command: RootCommand,
-
-    /// Wrap around when reaching the edge of the workspace
-    #[clap(arg_enum, action=ArgAction::Set, default_value = "nowrap", global = true)]
-    wrap: WrapOption,
-
-    /// Wrap around when reaching the edge of the workspace
-    #[clap(arg_enum, action=ArgAction::Set, default_value = "i3", global = true)]
-    pub backend: BackendOption,
+    pub backend: UseBackend,
+    pub command: String,
+    pub number: Option<usize>,
+    pub wrap: bool,
 }
 
-/// Define the subcommand for switching focus to a specific tab/window number
-#[derive(Subcommand, Debug)]
-enum RootCommand {
-    // Move focus to next/prev tab/window
-    /// Move focus to next tab/window
-    Next,
-    /// Move focus to previous tab/window
-    Prev,
+static HELP: &str = "
+i3switch - A simple command-line utility to switch focus in i3 window manager
 
-    // Move focus in a specific direction
-    /// Move focus right
-    Right,
-    /// Move focus down
-    Down,
-    /// Move focus left
-    Left,
-    /// Move focus up
-    Up,
+Usage: i3switch (<OPTION>|[<BACKEND>] <COMMAND> [wrap])
 
-    // Move focus to a specific tab/window number
-    /// Switch focus to a specific tab/window number
-    Number {
-        /// The tab/window number to switch focus to
-        #[clap(value_parser, value_name="num")]
-        number: usize,
-    },
+Backends:
+  -i3           Use i3 backend (default)
+  -wm           Use wmctrl backend
+  -xcb          Use XCB backend
+
+Commands:
+  next          Move focus to next tab/window
+  prev          Move focus to previous tab/window
+  right         Move focus right
+  down          Move focus down
+  left          Move focus left
+  up            Move focus up
+  number NUM    Switch focus to tab/window number NUM
+
+Arguments:
+  [wrap]        Wrap around when reaching the edge of the workspace
+
+Options:
+  -h, --help    Print help (see a summary with '-h')
+  -V, --version Print version
+";
+
+
+impl Cli {
+    pub fn parse(args: Vec<String>) -> Self {
+        let mut command = String::new();
+        let mut number: Option<usize> = None;
+        let mut wrap = false;
+
+        let mut arg_index = 1;
+
+        // Handle the boring help and version flags ahead
+
+        match args.get(arg_index) {
+            Some(arg) if arg == "-h" || arg == "--help" => {
+                die!(0, "{}", Self::help());
+            }
+            Some(arg) if arg == "-V" || arg == "--version" => {
+                die!(0, "i3switch version {}", env!("CARGO_PKG_VERSION"));
+            }
+            _ => {}
+        }
+
+        // Let's take the happy path first
+
+        let backend_arg = args.get(arg_index).map(|s| s.as_str());
+        let backend = match backend_arg {
+            Some("-i3")  => Some(UseBackend::I3),
+            Some("-wm")  => Some(UseBackend::WmCtrl),
+            Some("-xcb") => Some(UseBackend::Xcb),
+            _            => None,
+        };
+
+        if backend.is_some() {
+            arg_index += 1;
+        }
+
+        let valid_commands = ["left", "right", "up", "down", "next", "prev", "number"];
+        if valid_commands.contains(&args.get(arg_index).map(|s| s.as_str()).unwrap_or("")) {
+            command = args.get(arg_index).unwrap_or(&String::new()).clone();
+            arg_index += 1;
+        }
+
+        if args.get(arg_index) == Some(&"wrap".to_string()) {
+            wrap = true;
+            arg_index += 1;
+        }
+
+        if command == "number" {
+            number = args.get(arg_index).unwrap_or(&String::new()).parse::<usize>().ok();
+            arg_index += 1;
+        }
+
+        // Now we can check if there's any issues with what we have got so far
+
+        if args.get(arg_index).is_some() {
+            die!(1, "Error: Unexpected argument '{}'. Use -h for help.", args[arg_index]);
+        }
+
+        if command.is_empty() {
+            die!(1, "Error: No command provided. Use -h for help.");
+        }
+
+        if command == "number" {
+            if number.is_none() {
+                die!(1, "Error: No number provided for 'number' command. Use -h for help.");
+            } else if wrap {
+                die!(1, "Error: Wrap option is not applicable for 'number' command. Use -h for help.");
+            }
+        }
+
+        // Any defaults we need to set
+
+        let backend = backend.unwrap_or(UseBackend::I3);
+
+        Cli {
+            backend,
+            command,
+            number,
+            wrap,
+        }
+    }
+
+    pub fn help() -> &'static str {
+        HELP
+    }
+
+    pub fn linear_direction(&self) -> Option<linear::Direction> {
+        match self.command.as_str() {
+            "next" => Some(linear::Direction::Next),
+            "prev" => Some(linear::Direction::Prev),
+            _ => None,
+        }
+    }
+
+    pub fn planar_direction(&self) -> Option<planar::Direction> {
+        match self.command.as_str() {
+            "left"  => Some(planar::Direction::Left),
+            "right" => Some(planar::Direction::Right),
+            "up"    => Some(planar::Direction::Up),
+            "down"  => Some(planar::Direction::Down),
+            _ => None,
+        }
+    }
 }
 
-/// Define the wrap option for focus switching
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-#[clap(rename_all = "lower")]
-enum WrapOption {
-    /// Enable wrap around
-    Wrap,
-    /// Disable wrap around
-    NoWrap,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-#[clap(rename_all = "lower")]
-pub enum BackendOption {
-    /// Use the i3 IPC backend
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UseBackend {
     I3,
-    /// Use the sway IPC backend
     WmCtrl,
-    /// Use the xcb backend
     Xcb,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_parse() {
+        let args = "i3switch -i3 next wrap"
+            .to_string().split_whitespace().map(String::from).collect();
+        let cli = Cli::parse(args);
+        assert_eq!(cli.backend, UseBackend::I3);
+        assert_eq!(cli.command, "next");
+        assert!(cli.wrap);
+        assert!(cli.number.is_none());
+
+        let args = "i3switch -wm prev"
+            .to_string().split_whitespace().map(String::from).collect();
+        let cli = Cli::parse(args);
+        assert_eq!(cli.backend, UseBackend::WmCtrl);
+        assert_eq!(cli.command, "prev");
+        assert!(!cli.wrap);
+        assert!(cli.number.is_none());
+
+        let args = "i3switch -xcb number 3"
+            .to_string().split_whitespace().map(String::from).collect();
+        let cli = Cli::parse(args);
+        assert_eq!(cli.backend, UseBackend::Xcb);
+        assert_eq!(cli.command, "number");
+        assert!(!cli.wrap);
+        assert_eq!(cli.number, Some(3));
+
+        let args = "i3switch -i3 up wrap"
+            .to_string().split_whitespace().map(String::from).collect();
+        let cli = Cli::parse(args);
+        assert_eq!(cli.backend, UseBackend::I3);
+        assert_eq!(cli.command, "up");
+        assert!(cli.wrap);
+        assert!(cli.number.is_none());
+
+        let args = "i3switch left"
+            .to_string().split_whitespace().map(String::from).collect();
+        let cli = Cli::parse(args);
+        assert_eq!(cli.backend, UseBackend::I3);
+        assert_eq!(cli.command, "left");
+        assert!(!cli.wrap);
+        assert!(cli.number.is_none());
+    }
 }
