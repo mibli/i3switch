@@ -21,14 +21,17 @@ fn main() {
 
     let mut backend: Backend;
     match cli.backend {
+        #[cfg(feature = "i3")]
         cli::UseBackend::I3 => {
             logging::info!("Using I3 backend.");
             backend = Backend::new(UsedBackend::I3(I3Backend::new()));
         }
-        cli::UseBackend::WmCtrl => {
-            logging::info!("Using WmCtrl backend.");
+        #[cfg(feature = "wmctl")]
+        cli::UseBackend::WmCtl => {
+            logging::info!("Using WmCtl backend.");
             backend = Backend::new(UsedBackend::WmCtl(WmctlBackend::new()));
         }
+        #[cfg(feature = "xcb")]
         cli::UseBackend::Xcb => {
             logging::info!("Using XCB backend.");
             backend = Backend::new(UsedBackend::Xcb(XcbBackend::new()));
