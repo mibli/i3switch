@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "id": { "type": "number" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "layout": { "type": "string" },
+        "nodes": {
+            "type": "array",
+            "items": { "$ref": "#" }
+        },
+        "floating_nodes": {
+            "type": "array",
+            "items": { "$ref": "#" }
+        },
+        "rect": {
+            "type": "object",
+            "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "width": { "type": "number" },
+                "height": { "type": "number" }
+            },
+            "required": ["x", "y", "width", "height"]
+        },
+        "focus": {
+            "type": "array",
+            "items": { "type": "number" }
+        },
+        "focused": {
+            "type": "boolean"
+        }
+    },
+    "required": ["id", "type", "layout", "nodes", "floating_nodes", "rect", "focus", "focused"]
+}

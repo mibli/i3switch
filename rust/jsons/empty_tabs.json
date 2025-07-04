@@ -1,0 +1,21 @@
+{
+    "id": 2,
+    "type": "con",
+    "layout": "tabbed",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "con",
+            "layout": "tabbed",
+            "nodes": [],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [],
+            "focused": true
+        }
+    ],
+    "floating_nodes": [],
+    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+    "focus": [1],
+    "focused": false
+}

@@ -1,5 +1,4 @@
 mod client;
-mod compass;
 mod json;
 pub mod backend;
 
