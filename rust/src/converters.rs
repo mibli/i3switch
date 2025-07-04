@@ -58,15 +58,7 @@ fn focused_index(windows: &Windows) -> Option<usize> {
 mod tests {
     use crate::types::Rect;
     use crate::types::Window;
-    use crate::logging;
     use super::*;
-
-    use ctor::ctor;
-
-    #[ctor]
-    fn setup() {
-        logging::init();
-    }
 
     /// Tests for floating and tiled windows.
     #[test]

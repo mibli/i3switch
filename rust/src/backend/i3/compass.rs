@@ -186,14 +186,7 @@ fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::logging;
     use serde_json::json;
-    use ctor::ctor;
-
-    #[ctor]
-    fn setup() {
-        logging::init();
-    }
 
     /// Tests for visible nodes extraction.
     /// We expect the function to return all nodes that are not invisible.
