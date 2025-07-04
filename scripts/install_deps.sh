@@ -10,7 +10,10 @@ elif [ "$1" = "cpp" ]; then
         libdocopt-dev \
         nlohmann-json3-dev
 elif [ "$1" = "rust" ]; then
-    sudo apt install -y cargo
+    sudo apt install -y \
+        cargo \
+        libxcb1 \
+        libxcb1-dev
 elif [ "$1" = "package" ]; then
     sudo apt-get update
     sudo apt-get install -y ruby ruby-dev build-essential
