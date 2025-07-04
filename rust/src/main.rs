@@ -12,9 +12,6 @@ mod cli;
 use crate::backend::*;
 
 fn main() {
-    // Initialize logging
-    logging::init();
-
     let cli = cli::Cli::parse(std::env::args().collect());
 
     let wrap = cli.wrap;

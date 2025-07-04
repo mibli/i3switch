@@ -15,11 +15,11 @@ pub fn get_window_to_switch_to<B: GetVisible + GetTabs>(backend: &B, direction: 
         if let Some(window_id) = sequence.first(direction) {
             window_id
         } else {
-            eprintln!("Error: No windows available to switch to.");
+            logging::error!("No windows available to switch to.");
             std::process::exit(1);
         }
     } else {
-        eprintln!("Info: No windows available to switch to.");
+        logging::info!("No windows available to switch to.");
         std::process::exit(0);
     }
 }
@@ -38,11 +38,11 @@ pub fn get_window_in_direction<B: GetVisible>(backend: &B, direction: planar::Di
         if let Some(window) = arrangement.first(direction) {
             window.id
         } else {
-            eprintln!("Error: No windows available to switch to.");
+            logging::error!("No windows available to switch to.");
             std::process::exit(1);
         }
     } else {
-        eprintln!("Info: No windows available to switch to.");
+        logging::info!("No windows available to switch to.");
         std::process::exit(0);
     }
 }

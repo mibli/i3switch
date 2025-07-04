@@ -4,6 +4,7 @@ use crate::backend::traits::*;
 use xcb::Xid;
 use xcb::x::Window as XWindow;
 use std::collections::HashMap;
+use crate::logging;
 
 pub struct Backend {
     client: Client,
@@ -35,7 +36,7 @@ impl Backend {
                 let window = match client.fetch_window_info(&xwindow) {
                     Ok(info) => info,
                     Err(e) => {
-                        eprintln!("Failed to fetch window info for {}: {}", xwindow.resource_id(), e);
+                        logging::error!("Failed to fetch window info for {}: {}", xwindow.resource_id(), e);
                         return None;
                     }
                 };
@@ -49,7 +50,7 @@ impl Backend {
             if xid_map[&window.id] == active_window {
                 window.focused = true;
             }
-            println!("Window ID: {}, Rect: {}, Floating: {}, Focused: {}",
+            logging::debug!("Window ID: {}, Rect: {}, Floating: {}, Focused: {}",
                      window.id, window.rect.to_string(), window.floating, window.focused);
         });
 
@@ -73,8 +74,7 @@ impl SetFocus for Backend {
     fn set_focus(&mut self, window_id: &u64) {
         // Check if the window ID exists in the map
         if !self.xid_map.contains_key(window_id) {
-            eprintln!("Window ID {} does not exist", window_id);
-            return;
+            logging::critical!("Window ID {} does not exist", window_id);
         }
         // Set focus to the specified window
         self.client.set_focus(self.xid_map[window_id])
