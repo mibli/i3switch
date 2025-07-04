@@ -62,7 +62,6 @@ impl Node {
                 let mut nodes: Vec<&'a Node> = vec![];
                 nodes.extend(self.floating_nodes.iter());
                 self.nodes.iter().for_each(|subnode| {
-                    println!("Subnode: {}", subnode.to_string());
                     nodes.extend(subnode.visible_nodes());
                 });
                 return nodes;
