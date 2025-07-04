@@ -1,7 +1,6 @@
-use serde_json::Value;
 use crate::logging;
-use crate::types::{Rect, Window, Windows};
-
+use crate::types::{Window, Windows};
+use crate::backend::i3::json::Node;
 
 /// This enum represents the layout type of a node in a window manager's tree structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,14 +14,10 @@ enum Layout {
 /// Returns a collection of visible nodes in the provided JSON node.
 /// This function traverses the node structure and collects nodes that are not invisible
 /// or end nodes.
-pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
-    logging::debug!("V Node iterated id:{} type:{} layout:{}, name:{}", 
-        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"),
-        node.get("name").and_then(|v| v.as_str()).unwrap_or("null"));
-    if is_end_node(node) {
-        if is_invisible_node(node) {
+pub fn visible_nodes<'a>(node: &'a Node) -> Vec<&'a Node> {
+    logging::debug!("V Node iterated {}", node.to_string());
+    if node.is_leaf() {
+        if node.is_invisible() {
             return vec![];
         }
         return vec![node];
@@ -31,17 +26,15 @@ pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
     let layout = get_layout(node);
     match layout {
         Layout::AllVisible => {
-            let mut nodes: Vec<&'a Value> = vec![];
-            if let Some(floating_nodes) = node.get("floating_nodes").unwrap_or(&Value::Null).as_array() {
-                nodes.extend(floating_nodes.iter());
-            }
-            node.get("nodes").unwrap().as_array().unwrap().iter().for_each(|subnode| {
+            let mut nodes: Vec<&'a Node> = vec![];
+            nodes.extend(node.floating_nodes.iter());
+            node.nodes.iter().for_each(|subnode| {
                 nodes.extend(visible_nodes(subnode));
             });
             return nodes;
         }
         Layout::OneVisible => {
-            let mut nodes: Vec<&'a Value> = vec![];
+            let mut nodes: Vec<&'a Node> = vec![];
             if let Some(focused_node) = focused_subnode(node) {
                 nodes.extend(visible_nodes(focused_node));
             }
@@ -58,91 +51,45 @@ pub fn visible_nodes<'a>(node: &'a Value) -> Vec<&'a Value> {
 /// Finds deepest focused tabbed container in the provided node, and then for each tab,
 /// returns the deepest focused node within that tab, this is to preserve the
 /// focused state within tabs of a tabbed layout.
-pub fn available_tabs(node: &Value) -> Vec<&Value> {
+pub fn available_tabs(node: &Node) -> Vec<&Node> {
     if let Some(subnode) = find_deepest_focused_tabbed(node) {
-        let tabs_node = subnode.get("nodes").unwrap_or(&Value::Null);
-        if let Some(tabs_node) = tabs_node.as_array() {
-            return tabs_node.iter().map(|tab| find_deepest_focused(tab).unwrap_or(tab)).collect();
-        }
+        return subnode.nodes.iter().map(|tab| find_deepest_focused(tab).unwrap_or(tab)).collect();
     }
     logging::info!("No available tabs found in the provided node.");
     vec![]
 }
 
-impl From<&Value> for Window {
-    fn from(node: &Value) -> Self {
-        let id = node["id"].as_u64().unwrap_or(0);
-        let rect = Rect {
-            x: node["rect"]["x"].as_i64().unwrap_or(0) as i32,
-            y: node["rect"]["y"].as_i64().unwrap_or(0) as i32,
-            w: node["rect"]["width"].as_i64().unwrap_or(0) as i32,
-            h: node["rect"]["height"].as_i64().unwrap_or(0) as i32,
-        };
-        let floating = node["type"].as_str().map_or(false, |t| t == "floating_con");
-        let focused: bool;
-        if floating {
-            focused = node["nodes"].get(0).and_then(|n| n["focused"].as_bool()).unwrap_or(false);
-        } else {
-            focused = node["focused"].as_bool().unwrap_or(false);
-        };
-
-        Window { id, rect, focused, floating, }
-    }
-}
-
 /// Converts a JSON node to a `Windows`.
-pub fn to_windows(nodes: Vec<&Value>) -> Windows {
+pub fn to_windows(nodes: Vec<&Node>) -> Windows {
     nodes.into_iter()
-        .filter(|node| !is_invisible_node(node))
+        .filter(|node| !node.is_invisible())
         .map(Window::from)
         .collect()
-}
-
-/// Checks if a node is an invisible node, which is defined as having a rectangle with zero width
-/// and height.
-fn is_invisible_node(node: &Value) -> bool {
-    node["rect"]["width"].as_i64().unwrap_or(0) == 0
-        && node["rect"]["height"].as_i64().unwrap_or(0) == 0
-}
-
-/// Checks if a node is an end node, which is defined as having no subnodes and being of type
-/// "con".
-fn is_end_node(node: &Value) -> bool {
-    let is_empty = node.get("nodes").and_then(|n| n.as_array()).unwrap_or(&vec![]).is_empty();
-    let type_str = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
-    is_empty && ( type_str == "con" || type_str == "floating_con" )
-}
-
-/// Checks if a node is a workspace, which is defined as having a type of "workspace".
-fn is_content_node(node: &Value) -> bool {
-    node["name"].as_str().unwrap_or("") == "content" && !is_end_node(node)
 }
 
 /// Returns the subnode that is currently focused, if any. If the node is an end node or has no
 /// focus, it returns `None`.
 /// Requires an array "focus" field and a "nodes" field containing subnodes.
-fn focused_subnode(node: &Value) -> Option<&Value> {
-    let focus: &Value = node.get("focus").unwrap_or(&Value::Null);
-    if is_end_node(node) || focus.is_null() || focus.as_array().unwrap().is_empty() {
+fn focused_subnode(node: &Node) -> Option<&Node> {
+    if node.is_leaf() || node.focus.is_empty() {
         return None;
     }
-    let focus_id = focus[0].as_u64().unwrap_or(0);
-    node.get("nodes")?
-        .as_array()?
+    let focus_id = node.focus.first().unwrap_or(&0);
+    node.nodes
         .iter()
-        .find(|n| n["id"].as_u64() == Some(focus_id))
+        .find(|n| n.id == *focus_id)
 }
 
 /// Determines the layout type of a node based on its properties.
 /// Requires a "layout" field and a "type" field in the node.
-fn get_layout(node: &Value) -> Layout {
-    let layout = node.get("layout").and_then(|l| l.as_str()).unwrap_or("");
-    let node_type = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
-    if is_content_node(node) || layout == "stacked" || layout == "tabbed" {
+fn get_layout(node: &Node) -> Layout {
+    if node.is_content() ||
+        ["stacked", "tabbed"].contains(&node.layout.as_str())  {
         Layout::OneVisible
-    } else if layout == "splith" || layout == "splitv" || layout == "output" || node_type == "workspace" || node_type == "root" {
+    } else if ["splith", "splitv", "output"].contains(&node.layout.as_str()) ||
+            ["workspace", "root", "con"].contains(&node.type_.as_str()) {
         Layout::AllVisible
-    } else if layout == "dockarea" {
+    } else if node.layout == "dockarea" {
         Layout::Skipped
     } else {
         Layout::Invalid
@@ -150,11 +97,8 @@ fn get_layout(node: &Value) -> Layout {
 }
 
 /// Finds the deepest focused node in a tree structure, starting from the given node.
-fn find_deepest_focused(node: &Value) -> Option<&Value> {
-    logging::debug!("F Node iterated id:{} type:{} layout:{}",
-        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"));
+fn find_deepest_focused(node: &Node) -> Option<&Node> {
+    logging::debug!("F Node iterated {}", node.to_string());
     let subnode = focused_subnode(node);
     if subnode.is_some() {
         let deepest = find_deepest_focused(subnode?);
@@ -167,11 +111,8 @@ fn find_deepest_focused(node: &Value) -> Option<&Value> {
 
 /// Finds the deepest focused node that is tabbed, meaning it has a layout of `tabbed` or
 /// `stacked`.
-fn find_deepest_focused_tabbed(node: &Value) -> Option<&Value> {
-    logging::debug!("T Node iterated id:{} type:{} layout:{}",
-        node.get("id").and_then(|v| v.as_u64()).unwrap_or(0),
-        node.get("type").and_then(|v| v.as_str()).unwrap_or("null"),
-        node.get("layout").and_then(|v| v.as_str()).unwrap_or("null"));
+fn find_deepest_focused_tabbed(node: &Node) -> Option<&Node> {
+    logging::debug!("T Node iterated {}", node.to_string());
     if let Some(subnode) = focused_subnode(node) {
         let endnode = find_deepest_focused_tabbed(subnode);
         if endnode.is_some() {
@@ -428,7 +369,7 @@ mod tests {
             json!({"id": 1, "rect": {"x": 0, "y": 0, "width": 100, "height": 100}, "focused": true, "type": "con", "nodes": []}),
             json!({"id": 2, "rect": {"x": 300, "y": 450, "width": 15, "height": 200}, "focused": false, "type": "con", "nodes": []}),
         ];
-        let node_refs: Vec<&Value> = nodes.iter().collect();
+        let node_refs: Vec<&Node> = nodes.iter().collect();
         let windows = to_windows(node_refs);
         assert_eq!(windows.len(), 2);
         assert_eq!(windows[0].id, 1);
