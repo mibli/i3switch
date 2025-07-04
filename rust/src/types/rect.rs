@@ -1,13 +1,22 @@
 /// A simple rectangle structure with methods to calculate its extents and middle points in a 2D
 /// space.
 
+#[cfg(feature = "i3")]
+use serde::Deserialize;
+
 /// This structure is used to represent a rectangle defined by its top-left corner (x, y) and its
 /// width (w) and height (h).
+#[cfg(feature = "i3")]
+#[derive(Deserialize)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
+    #[cfg(feature = "i3")]
+    #[serde(rename = "width")]
     pub w: i32,
+    #[cfg(feature = "i3")]
+    #[serde(rename = "height")]
     pub h: i32,
 }
 

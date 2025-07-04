@@ -4,13 +4,14 @@ use crate::logging;
 use crate::types::Windows;
 use super::client::{Client, Request};
 use super::compass;
+use super::json::Node;
 
 use serde_json as json;
 use std::process;
 
 pub struct Backend {
     client: Client,
-    root: json::Value,
+    root: Node,
 }
 
 impl Backend {
@@ -26,8 +27,10 @@ impl Backend {
             .expect_log("Failed to get i3 tree JSON");
 
         // Parse the i3 tree to get the current workspace and window information
-        let root = json::from_str::<json::Value>(&root_string)
+        let root_value = json::from_str::<json::Value>(&root_string)
             .expect_log("Failed to parse i3 tree JSON");
+        let root: Node = json::from_value(root_value)
+            .expect_log("Failed to convert i3 tree JSON to Node");
         Self {
             client,
             root,
