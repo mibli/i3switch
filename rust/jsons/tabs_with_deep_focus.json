@@ -1,0 +1,63 @@
+{
+    "id": 1,
+    "type": "con",
+    "layout": "splith",
+    "nodes": [
+        {
+            "id": 2,
+            "type": "con",
+            "layout": "tabbed",
+            "nodes": [
+                {
+                    "id": 3,
+                    "type": "con",
+                    "layout": "splith",
+                    "nodes": [],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [],
+                    "focused": true
+                },
+                {
+                    "id": 4,
+                    "type": "con",
+                    "layout": "splith",
+                    "nodes": [
+                        {
+                            "id": 5,
+                            "type": "con",
+                            "layout": "splith",
+                            "nodes": [],
+                            "floating_nodes": [],
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "focus": [],
+                            "focused": true
+                        },
+                        {
+                            "id": 6,
+                            "type": "con",
+                            "layout": "splith",
+                            "nodes": [],
+                            "floating_nodes": [],
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "focus": [],
+                            "focused": false
+                        }
+                    ],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [5],
+                    "focused": true
+                }
+            ],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [3],
+            "focused": true
+        }
+    ],
+    "floating_nodes": [],
+    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+    "focus": [2],
+    "focused": true
+}

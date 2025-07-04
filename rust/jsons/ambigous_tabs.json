@@ -1,0 +1,52 @@
+{
+    "id": 1,
+    "type": "con",
+    "layout": "splith",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "con",
+            "layout": "tabbed",
+            "nodes": [
+                {
+                    "id": 3,
+                    "type": "con",
+                    "layout": "tabbed",
+                    "nodes": [],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [],
+                    "focused": true
+                },
+                {
+                    "id": 4,
+                    "type": "con",
+                    "layout": "tabbed",
+                    "nodes": [],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [],
+                    "focused": false
+                }
+            ],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [3],
+            "focused": false
+        },
+        {
+            "id": 2,
+            "type": "con",
+            "layout": "tabbed",
+            "nodes": [],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [],
+            "focused": false
+        }
+    ],
+    "floating_nodes": [],
+    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+    "focus": [1, 3],
+    "focused": false
+}

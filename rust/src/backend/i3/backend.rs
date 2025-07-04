@@ -3,8 +3,8 @@ use crate::logging::ResultExt;
 use crate::logging;
 use crate::types::Windows;
 use super::client::{Client, Request};
-use super::compass;
 use super::json::Node;
+use crate::types::Window;
 
 use serde_json as json;
 use std::process;
@@ -40,15 +40,15 @@ impl Backend {
 
 impl GetTabs for Backend {
     fn get_tabs(&self) -> Result<Windows, String> {
-        let nodes = compass::available_tabs(&self.root);
-        Ok(compass::to_windows(nodes))
+        let nodes = self.root.available_tabs();
+        Ok(nodes.iter().map(|node| Window::from(*node)).collect())
     }
 }
 
 impl GetVisible for Backend {
     fn get_visible(&self) -> Result<Windows, String> {
-        let nodes = compass::visible_nodes(&self.root);
-        Ok(compass::to_windows(nodes))
+        let nodes = self.root.visible_nodes();
+        Ok(nodes.iter().map(|node| Window::from(*node)).collect())
     }
 }
 

@@ -1,0 +1,173 @@
+{
+    "id": 0,
+    "type": "root",
+    "layout": "splith",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "output",
+            "layout": "output",
+            "nodes": [
+                {
+                    "id": 2,
+                    "name": "content",
+                    "type": "con",
+                    "layout": "splith",
+                    "nodes": [
+                        {
+                            "id": 3,
+                            "type": "workspace",
+                            "layout": "splith",
+                            "nodes": [
+                                {
+                                    "id": 4,
+                                    "type": "con",
+                                    "layout": "splith",
+                                    "nodes": [
+                                        {
+                                            "id": 5,
+                                            "type": "con",
+                                            "layout": "splith",
+                                            "nodes": [],
+                                            "floating_nodes": [],
+                                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                            "focus": [],
+                                            "focused": false
+                                        },
+                                        {
+                                            "id": 6,
+                                            "type": "con",
+                                            "layout": "splith",
+                                            "nodes": [],
+                                            "floating_nodes": [],
+                                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                            "focus": [],
+                                            "focused": true
+                                        }
+                                    ],
+                                    "floating_nodes": [],
+                                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                    "focus": [6, 5],
+                                    "focused": false
+                                }
+                            ],
+                            "floating_nodes": [],
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "focus": [4],
+                            "focused": false
+                        }
+                    ],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [3],
+                    "focused": false
+                }
+            ],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [2],
+            "focused": false
+        },
+        {
+            "id": 7,
+            "type": "output",
+            "layout": "output",
+            "nodes": [
+                {
+                    "id": 8,
+                    "type": "con",
+                    "layout": "splith",
+                    "name": "content",
+                    "nodes": [
+                        {
+                            "id": 12,
+                            "type": "workspace",
+                            "layout": "splith",
+                            "nodes": [
+                                {
+                                    "id": 13,
+                                    "type": "con",
+                                    "layout": "splith",
+                                    "nodes": [],
+                                    "floating_nodes": [],
+                                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                    "focus": [],
+                                    "focused": false
+                                }
+                            ],
+                            "floating_nodes": [],
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "focus": [13],
+                            "focused": false
+                        },
+                        {
+                            "id": 9,
+                            "type": "workspace",
+                            "layout": "splith",
+                            "nodes": [
+                                {
+                                    "id": 10,
+                                    "type": "con",
+                                    "layout": "tabbed",
+                                    "nodes": [
+                                        {
+                                            "id": 14,
+                                            "type": "con",
+                                            "layout": "splith",
+                                            "nodes": [],
+                                            "floating_nodes": [],
+                                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                            "focus": [],
+                                            "focused": false
+                                        },
+                                        {
+                                            "id": 11,
+                                            "type": "con",
+                                            "layout": "splith",
+                                            "nodes": [],
+                                            "floating_nodes": [],
+                                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                            "focus": [],
+                                            "focused": false
+                                        }
+                                    ],
+                                    "floating_nodes": [],
+                                    "rect": {"x": 0, "y": 0, "width": 0, "height": 0},
+                                    "focus": [11, 14],
+                                    "focused": false
+                                }
+                            ],
+                            "floating_nodes": [
+                                {
+                                    "id": 20,
+                                    "type": "con",
+                                    "layout": "splith",
+                                    "nodes": [],
+                                    "floating_nodes": [],
+                                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                                    "focus": [],
+                                    "focused": false
+                                }
+                            ],
+                            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                            "focus": [10, 20],
+                            "focused": false
+                        }
+                    ],
+                    "floating_nodes": [],
+                    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+                    "focus": [9, 12],
+                    "focused": false
+                }
+            ],
+            "floating_nodes": [],
+            "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+            "focus": [8],
+            "focused": false
+        }
+    ],
+    "floating_nodes": [],
+    "rect": {"x": 0, "y": 0, "width": 100, "height": 100},
+    "focus": [1, 7],
+    "focused": false
+}
