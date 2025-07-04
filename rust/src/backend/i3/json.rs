@@ -34,6 +34,8 @@ impl Node {
     // Public methods
     // --------------
 
+    /// Finds all available tabs in the node tree, relevant for current focus.
+    /// Returns a vector of most recently focused nodes for each tab.
     pub fn available_tabs(&self) -> Vec<&Node> {
         if let Some(subnode) = self.find_deepest_focused_tabbed() {
             return subnode.nodes.iter().map(|tab| tab.find_deepest_focused().unwrap_or(tab)).collect();
@@ -42,6 +44,9 @@ impl Node {
         vec![]
     }
 
+    /// Finds all visible nodes in the node tree.
+    /// Nodes are considered visible if they are on a visible workspace, not unfocused tab,
+    /// and have a non-zero rectangle size.
     pub fn visible_nodes<'a>(&'a self) -> Vec<&'a Node> {
         logging::debug!("V Iterated {}", self.to_string());
         if self.is_leaf() {
@@ -81,11 +86,14 @@ impl Node {
     // Private methods
     // ---------------
 
+    /// Checks if the node is a leaf node, meaning it has no subnodes and is a container.
     fn is_leaf(&self) -> bool {
         self.nodes.is_empty() &&
             (self.type_ == "con" || self.type_ == "floating_con")
     }
 
+    /// Checks if the node is a content node, which is a special type of node containing
+    /// workspaces.
     fn is_content(&self) -> bool {
         self.type_ == "con" &&
             self.name.is_some() &&
@@ -93,16 +101,28 @@ impl Node {
             !self.is_leaf()
     }
 
+    /// Checks if the node is invisible, meaning it has a rectangle with zero width and height.
     fn is_invisible(&self) -> bool {
         self.rect.w == 0 &&
             self.rect.h == 0
     }
 
+    /// Checks if the node is floating, meaning it is a floating container or has any floating
+    /// subnodes that are floating.
     fn is_floating(&self) -> bool {
         self.type_ == "floating_con" ||
             self.floating_nodes.iter().any(|n| n.is_floating())
     }
 
+    /// Returns whether the node is a tabbed layout that has multiple subnodes.
+    fn is_switchable_tabbed(&self) -> bool {
+        self.get_layout() == Layout::OneVisible &&
+            !self.is_content() &&
+            self.nodes.len() > 1
+    }
+
+    /// Returns the focused subnode of the current node, if it exists.
+    /// Focused subnodes are determined by the most recent focus ID in the `focus` vector.
     fn focused_subnode(&self) -> Option<&Node> {
         if self.is_leaf() || self.focus.is_empty() {
             return None;
@@ -113,29 +133,28 @@ impl Node {
             .find(|n| n.id == *focus_id)
     }
 
+    /// Finds the deepest focused tabbed node in the tree that has multiple subnodes.
     fn find_deepest_focused_tabbed(&self) -> Option<&Node> {
         logging::debug!("T Iterated {}", self.to_string());
-        if let Some(subnode) = self.focused_subnode() {
-            if self.get_layout() != Layout::OneVisible {
-                return Some(subnode);
-            }
-            return subnode.find_deepest_focused_tabbed();
+        let subnode = self.focused_subnode()?;
+        match subnode.find_deepest_focused_tabbed() {
+            Some(tabnode) => Some(tabnode),
+            None if self.is_switchable_tabbed() => Some(self),
+            None => None
         }
-        None
     }
 
+    /// Finds the deepest focused node in the tree.
     fn find_deepest_focused(&self) -> Option<&Node> {
         logging::debug!("F Iterated {}", self.to_string());
-        let subnode = self.focused_subnode();
-        if subnode.is_some() {
-            let deepest = subnode?.find_deepest_focused();
-            if deepest.is_some() {
-                return deepest;
-            }
+        let subnode = self.focused_subnode()?;
+        match subnode.find_deepest_focused() {
+            Some(deepest) => Some(deepest),
+            None => Some(subnode)
         }
-        subnode
     }
 
+    /// Returns the layout type of the node based on its type and layout fields.
     fn get_layout(&self) -> Layout {
         if self.is_content() ||
             ["stacked", "tabbed"].contains(&self.layout.as_str())  {
@@ -177,7 +196,6 @@ impl ToString for Node {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     fn read_json(file: &str) -> Node {
         let content = std::fs::read_to_string(file)
