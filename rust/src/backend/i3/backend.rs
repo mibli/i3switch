@@ -27,9 +27,7 @@ impl Backend {
             .expect_log("Failed to get i3 tree JSON");
 
         // Parse the i3 tree to get the current workspace and window information
-        let root_value = json::from_str::<json::Value>(&root_string)
-            .expect_log("Failed to parse i3 tree JSON");
-        let root: Node = json::from_value(root_value)
+        let root: Node = json::from_str(root_string.as_str())
             .expect_log("Failed to convert i3 tree JSON to Node");
         Self {
             client,
