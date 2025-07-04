@@ -89,10 +89,10 @@ fn get_planar_arrangement<B: GetVisible>(backend: &B) -> planar::Arrangement {
 
     if converters::any_focused(&floating) {
         logging::debug!("Using floating windows for planar arrangement.");
-        return converters::as_arrangement(&floating, planar::Relation::Center);
+        return converters::as_arrangement(floating, planar::Relation::Center);
     } else {
         logging::debug!("Using available tiled for planar arrangement.");
         let tiled = converters::tiled(&windows);
-        return converters::as_arrangement(&tiled, planar::Relation::Border);
+        return converters::as_arrangement(tiled, planar::Relation::Border);
     }
 }

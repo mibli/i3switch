@@ -31,9 +31,9 @@ pub fn tiled(windows: &Windows) -> Windows {
 /// Converts a JSON node to a `planar::Arrangement`.
 /// This function assumes that the node represents a workspace or root node
 /// and contains a list of windows.
-pub fn as_arrangement(windows: &Windows, relation: planar::Relation) -> planar::Arrangement {
-    let current = focused_index(windows).unwrap_or(0);
-    planar::Arrangement::new(windows.clone(), Some(current), Some(relation))
+pub fn as_arrangement(windows: Windows, relation: planar::Relation) -> planar::Arrangement {
+    let current = focused_index(&windows).unwrap_or(0);
+    planar::Arrangement::new(windows, Some(current), Some(relation))
 }
 
 /// Converts a collection of `Windows` to a `linear::Sequence`.
@@ -90,7 +90,7 @@ mod tests {
             Window { id: 1, rect: Rect { x: 0, y: 0, w: 100, h: 100 }, focused: true, floating: false },
             Window { id: 2, rect: Rect { x: 100, y: 100, w: 200, h: 200 }, focused: false, floating: true },
         ];
-        let arrangement = as_arrangement(&windows, planar::Relation::Border);
+        let arrangement = as_arrangement(windows, planar::Relation::Border);
         assert_eq!(arrangement.windows.len(), 2);
         assert_eq!(arrangement.current, 0);
     }
