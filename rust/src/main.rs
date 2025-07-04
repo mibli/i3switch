@@ -1,7 +1,6 @@
 #![recursion_limit = "256"] // Required for tests with older serde_json
 
 mod backend;
-mod converters;
 mod linear;
 mod logging;
 mod navigation;
