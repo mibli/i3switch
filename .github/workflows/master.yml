@@ -3,6 +3,10 @@ name: Build and Package on Ubuntu
 on:
   push:
     branches: [ master ]
+    tags:
+      - rs-v*
+      - py-v*
+      - cpp-v*
   pull_request:
     branches: [ master ]
 
