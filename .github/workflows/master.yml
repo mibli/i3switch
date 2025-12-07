@@ -52,7 +52,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: i3switch-${{ matrix.language }}-deb
-        path: "i3switch-${{ matrix.language }}*.deb"
+        path: "i3switch-*.deb"
   changelog:
     strategy:
       matrix:
