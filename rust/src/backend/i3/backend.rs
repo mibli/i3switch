@@ -1,5 +1,6 @@
 use crate::backend::traits::*;
 use crate::logging::ResultExt;
+use crate::logging::OptionExt;
 use crate::logging;
 use crate::types::Windows;
 use super::client::{Client, Request};
@@ -13,14 +14,18 @@ pub struct Backend {
     root: json::Value,
 }
 
+fn get_sock_path(executable: &str) -> Option<String> {
+    process::Command::new(executable).arg("--get-socketpath").output()
+        .ok().filter(|o| o.status.success()).and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
+}
+
 impl Backend {
     pub fn new() -> Self {
         // Establish a connection to the i3 IPC server and get the tree structure
-        let i3_socket_path_output = process::Command::new("i3").arg("--get-socketpath").output()
-            .expect_log("Failed to get i3 socket path");
-        let i3_path = String::from_utf8(i3_socket_path_output.stdout)
-            .expect_log("Failed to parse i3 socket path output");
-        let mut client = Client::new(&i3_path.trim())
+        let socket_path = get_sock_path("i3").or_else(|| get_sock_path("sway"))
+            .wanted("Failed to get socket path from i3 or sway").unwrap_or_default();
+        let mut client = Client::new(&socket_path.trim())
             .expect_log("Failed to connect to i3 IPC server");
         let root_string = client.request(Request::GetTree, "")
             .expect_log("Failed to get i3 tree JSON");
