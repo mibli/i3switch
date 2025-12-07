@@ -1,7 +1,7 @@
 #!/bin/bash
 language=$1
 type=${2:-deb}
-root_dir=$(dirname "$(realpath "$0"/..)")
+root_dir="$(realpath "$(dirname "$0")/..")"
 
 case $language in
     cpp)
