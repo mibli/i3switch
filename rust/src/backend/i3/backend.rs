@@ -8,6 +8,7 @@ use super::compass;
 
 use serde_json as json;
 use std::process;
+use std::thread;
 
 pub struct Backend {
     client: Client,
@@ -20,10 +21,17 @@ fn get_sock_path(executable: &str) -> Option<String> {
         .map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
 }
 
+fn get_sock_path_async() -> Option<String> {
+    thread::scope(|s| {
+        ["i3", "sway"].iter().map(|&bin| s.spawn(move || get_sock_path(bin)))
+            .find_map(|h| h.join().unwrap_or(None))
+    })
+}
+
 impl Backend {
     pub fn new() -> Self {
         // Establish a connection to the i3 IPC server and get the tree structure
-        let socket_path = get_sock_path("i3").or_else(|| get_sock_path("sway"))
+        let socket_path = get_sock_path_async()
             .wanted("Failed to get socket path from i3 or sway").unwrap_or_default();
         let mut client = Client::new(&socket_path.trim())
             .expect_log("Failed to connect to i3 IPC server");
