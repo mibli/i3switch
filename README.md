@@ -10,6 +10,11 @@ abstraction of the manual tiling structure.
 
 For more history and motivation, see [history.md](docs/history.md).
 
+## Sway
+
+Since sway is mostly compatible with i3, rust version supports sway in i3 mode, by using
+sway socket for i3 IPC.
+
 ## Preview
 
 Preview demonstrates directional switching (without touching active tabs) and tab navigation
